@@ -17,7 +17,7 @@ Challenges & Lessons Learned
 Tech Stack
 Getting Started
 Team
-نبذة بالعربي
+
 Problem
 
 Countries like Egypt face recurring infectious disease challenges, such as the vaccine-derived poliovirus outbreak (VDPV2) in 2020–2021 and avian influenza cases (H5N1/H5N8) in 2022–2024. Digital health infrastructure is growing, but traditional surveillance still relies heavily on manual reports and after-the-fact analysis, which can delay outbreak detection by days or weeks.
