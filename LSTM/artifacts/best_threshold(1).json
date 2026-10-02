@@ -1,0 +1,9 @@
+{
+  "best_threshold": 0.28,
+  "strategy": "lowest threshold with precision >= 0.6",
+  "min_precision_floor": 0.6,
+  "val_precision_at_threshold": 0.6,
+  "val_recall_at_threshold": 0.7079303675048356,
+  "val_f1_at_threshold": 0.6495119787045253,
+  "val_f2_at_threshold": 0.6833457804331591
+}
