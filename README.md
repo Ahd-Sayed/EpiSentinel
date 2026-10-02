@@ -137,7 +137,7 @@ EpiSentinel/
 │   ├── requirements.txt
 │   ├── Procfile, nixpacks.toml   # deployment configuration
 │   └── .env.example        # environment variables template
-├── DBSCAN & RF/            # anomaly detection experiments
+├── DBSCAN & IF/            # anomaly detection experiments
 ├── LSTM/                   # LSTM experiments
 ├── Fusion_scores/          # fusion engine results
 ├── synthea_to_african_data/  # data preparation
@@ -208,7 +208,7 @@ Deployment is configured through `Procfile` and `nixpacks.toml`.
 
 | Name | Field |
 |---|---|
-| Mustafa Tamer (Team Lead) | Intelligent Systems, Faculty of AI, Menoufia University |
+| Mostafa Tamer (Team Lead) | Intelligent Systems, Faculty of AI, Menoufia University |
 | Yahia Sanad | Intelligent Systems, Faculty of AI, Menoufia University |
 | Ahd Sayed | Data Science, Faculty of AI, Menoufia University |
 | Hanaa Hemdan | Data Science, Faculty of AI, Menoufia University |
