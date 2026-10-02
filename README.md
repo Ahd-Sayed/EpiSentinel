@@ -3,8 +3,6 @@
 
 **AI-powered epidemic early warning system for African health ministries**
 
-Digital Innovation Challenge 2026 · Track: Digital Health
-
 EpiSentinel analyzes hospital visit data with three complementary AI models and fuses their outputs into a three-level alert system (**Watch / Warning / Emergency**), helping health decision-makers detect outbreaks days or weeks earlier than traditional manual surveillance.
 
 ---
