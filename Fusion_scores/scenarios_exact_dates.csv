@@ -1,0 +1,13 @@
+CITY,DISEASE,exact_start,exact_end,n_records,status
+Kinshasa,Ebola virus disease,2020-08-02,2020-10-29,3000,OK
+Lagos,Lassa fever,2021-01-02,2021-03-30,2500,OK
+Nairobi,Cholera,2021-04-01,2021-06-29,4000,OK
+Addis Ababa,Malaria,2021-09-01,2021-11-29,5000,OK
+Kampala,Ebola virus disease,2022-09-03,2022-11-29,2000,OK
+Khartoum,Cholera,2022-07-01,2022-09-29,3500,OK
+Cairo,COVID-19,2021-01-02,2021-04-29,6000,OK
+Goma,Mpox,2023-01-03,2023-04-29,2500,OK
+Dar es Salaam,Dengue fever,2022-03-04,2022-06-29,3000,OK
+Kano,Meningitis,2021-12-01,2022-02-27,2000,OK
+Mansoura,Typhoid fever,2022-05-03,2022-07-30,1500,OK
+Lusaka,Cholera,2023-01-02,2023-03-30,3000,OK
