@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+.pytest_cache/
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv/
+
+# Environment variables & secrets
+.env
+.env.local
+*.env
+
+# SQLite databases & Large Database dumps
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
+episentinel.db
+epiguard.db
+epiguard_local.db
+db/*.db
+
+# Large dataset & temporary prediction files (>100MB)
+test_df_with_if_dbscan_predictions.csv
+
+# Application runtime files
+logs/
+uploads/
+exports/
+scratch_*.py
+
+# IDE / Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

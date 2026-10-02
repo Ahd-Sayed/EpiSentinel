@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<meta name="description" content="EpiGuard Africa — AI-powered epidemic early-warning intelligence system across 64 African cities."/>
+<title>EpiGuard Africa — Outbreak Intelligence</title>
+<link rel="stylesheet" href="/static/css/spa.css"/>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><polygon points='50,5 95,27 95,70 50,95 5,70 5,27' fill='%236C63FF'/></svg>"/>
+</head>
+<body>
+
+<!-- ═══ STARFIELD ════════════════════════════════════════════════════ -->
+<canvas id="stars"></canvas>
+<div class="radial-a"></div>
+
+<!-- ═══ FLOATING LEFT NAV ═══════════════════════════════════════════ -->
+<nav class="fnav gone" id="fnav">
+  <div class="fnav-brand" onclick="goto('hero')" title="Home">
+    <div class="fnav-shield"></div>
+  </div>
+  <button class="fnav-btn" data-s="overview"  onclick="goto('overview')">
+    <span class="icon-ov"><span></span><span></span><span></span><span></span></span>
+    <span class="fnav-lbl">Overview</span>
+  </button>
+  <button class="fnav-btn" data-s="alerts"    onclick="goto('alerts')">
+    <span class="icon-al"></span>
+    <span class="fnav-lbl">Alerts</span>
+  </button>
+  <button class="fnav-btn" data-s="scenarios" onclick="goto('scenarios')">
+    <span class="icon-sc"></span>
+    <span class="fnav-lbl">Scenarios</span>
+  </button>
+  <button class="fnav-btn" data-s="models"    onclick="goto('models')">
+    <span class="icon-mo"><span></span><span></span><span></span></span>
+    <span class="fnav-lbl">Models</span>
+  </button>
+  <button class="fnav-btn" data-s="explorer"  onclick="goto('explorer')">
+    <span class="icon-ex"></span>
+    <span class="fnav-lbl">Explorer</span>
+  </button>
+</nav>
+
+<!-- ═══ RIGHT DOTS ══════════════════════════════════════════════════ -->
+<div class="rdots" id="rdots">
+  <div class="rdot" data-t="hero"      onclick="goto('hero')"      title="Home"></div>
+  <div class="rdot" data-t="overview"  onclick="goto('overview')"  title="Overview"></div>
+  <div class="rdot" data-t="alerts"    onclick="goto('alerts')"    title="Alerts"></div>
+  <div class="rdot" data-t="scenarios" onclick="goto('scenarios')" title="Scenarios"></div>
+  <div class="rdot" data-t="models"    onclick="goto('models')"    title="Models"></div>
+  <div class="rdot" data-t="explorer"  onclick="goto('explorer')"  title="Data Explorer"></div>
+</div>
+
+<!-- keyboard hint -->
+<div class="kbd-hint">
+  <span class="kbd">↑</span><span class="kbd">↓</span><span style="margin-left:3px">Navigate</span>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════
+     HERO
+     ════════════════════════════════════════════════════════════════ -->
+<section class="sec active" id="sec-hero" data-idx="0">
+
+  <div class="hero-badge">
+    <span class="live-blink"></span>
+    AI-Powered &nbsp;•&nbsp; Africa-Wide &nbsp;•&nbsp; Real-Time
+  </div>
+
+  <h1 class="hero-title">
+    <span class="hero-title-main">EpiGuard</span>
+    <span class="hero-title-sub">Africa</span>
+  </h1>
+
+  <p class="hero-desc">
+    Epidemic early-warning intelligence powered by Isolation Forest, DBSCAN and LSTM
+    fusion — monitoring 64 African cities across 9 diseases.
+  </p>
+
+  <div class="hero-cards">
+    <div class="hcard c-purple" onclick="goto('overview')">
+      <div class="hcard-icon-box ib-purple">
+        <span class="icon-ov"><span></span><span></span><span></span><span></span></span>
+      </div>
+      <h3>Overview</h3>
+      <p>System-wide performance across 12 outbreak scenarios</p>
+      <div class="hcard-stats">
+        <div class="hstat"><span class="hstat-k">Detected</span><span class="hstat-v">12 / 12</span></div>
+        <div class="hstat"><span class="hstat-k">Avg Lead Time</span><span class="hstat-v">5.04 wks</span></div>
+      </div>
+      <span class="hcard-arr">&#8594;</span>
+    </div>
+
+    <div class="hcard c-red" onclick="goto('alerts')">
+      <div class="hcard-icon-box ib-red"><span class="icon-al"></span></div>
+      <h3>Alerts Explorer</h3>
+      <p>Browse 37K+ weekly alert signals across cities and diseases</p>
+      <div class="hcard-stats">
+        <div class="hstat"><span class="hstat-k">Total Alerts</span><span class="hstat-v">37,477</span></div>
+        <div class="hstat"><span class="hstat-k">Alert Levels</span><span class="hstat-v">4 levels</span></div>
+      </div>
+      <span class="hcard-arr">&#8594;</span>
+    </div>
+
+    <div class="hcard c-green" onclick="goto('scenarios')">
+      <div class="hcard-icon-box ib-green"><span class="icon-sc"></span></div>
+      <h3>Scenarios</h3>
+      <p>Explore 12 confirmed outbreaks with deep-dive timelines</p>
+      <div class="hcard-stats">
+        <div class="hstat"><span class="hstat-k">Detection Rate</span><span class="hstat-v">100%</span></div>
+        <div class="hstat"><span class="hstat-k">Cities</span><span class="hstat-v">12 unique</span></div>
+      </div>
+      <span class="hcard-arr">&#8594;</span>
+    </div>
+
+    <div class="hcard c-amber" onclick="goto('models')">
+      <div class="hcard-icon-box ib-amber">
+        <span class="icon-mo"><span></span><span></span><span></span></span>
+      </div>
+      <h3>Model Performance</h3>
+      <p>Compare LSTM, Isolation Forest and DBSCAN AI models</p>
+      <div class="hcard-stats">
+        <div class="hstat"><span class="hstat-k">AI Models</span><span class="hstat-v">3 models</span></div>
+        <div class="hstat"><span class="hstat-k">DBSCAN AUC</span><span class="hstat-v">0.921</span></div>
+      </div>
+      <span class="hcard-arr">&#8594;</span>
+    </div>
+
+    <div class="hcard c-cyan" onclick="goto('explorer')">
+      <div class="hcard-icon-box ib-cyan"><span class="icon-ex"></span></div>
+      <h3>Data Explorer</h3>
+      <p>Inspect raw weekly signals, LSTM predictions &amp; patient records</p>
+      <div class="hcard-stats">
+        <div class="hstat"><span class="hstat-k">Signal Records</span><span class="hstat-v">76,612</span></div>
+        <div class="hstat"><span class="hstat-k">Patient Records</span><span class="hstat-v">50,000</span></div>
+      </div>
+      <span class="hcard-arr">&#8594;</span>
+    </div>
+  </div><!-- /cards -->
+
+  <div class="hero-bar">
+    <div class="hbar-item"><span class="pdot pd-g"></span>&nbsp;System Online</div>
+    <div class="hbar-item">64 Cities</div>
+    <div class="hbar-item">9 Diseases</div>
+    <div class="hbar-item">76K+ Records</div>
+    <div class="hbar-item" id="hero-clock" style="font-family:'JetBrains Mono',monospace;color:var(--t2)"></div>
+  </div>
+
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     OVERVIEW
+     ════════════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-overview" data-idx="1">
+
+  <div class="sec-top">
+    <div class="sec-top-left">
+      <div class="sec-top-title">Overview</div>
+      <div class="sec-top-sub">System performance — 12 outbreak scenarios</div>
+    </div>
+    <div class="sec-top-center">
+      <div class="tstat"><span class="pdot pd-g" style="width:6px;height:6px;display:inline-block"></span>&nbsp;<span><strong>64</strong> Cities</span></div>
+      <div class="tsep"></div>
+      <div class="tstat"><strong>9</strong>&nbsp;Diseases</div>
+      <div class="tsep"></div>
+      <div class="tstat"><strong>76K+</strong>&nbsp;Records</div>
+    </div>
+    <div class="sec-top-right">
+      <span class="top-updated">Last Updated</span>
+      <span class="top-clock" id="ov-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="sec-body">
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card kp-green" style="animation-delay:.0s">
+        <span class="kpi-icon">🎯</span>
+        <div class="kpi-val" id="kv-det">—</div>
+        <div class="kpi-lbl">Scenarios Detected</div>
+        <div class="kpi-sub">Out of 12 total</div>
+      </div>
+      <div class="kpi-card kp-cyan" style="animation-delay:.08s">
+        <span class="kpi-icon">⏱</span>
+        <div class="kpi-val" id="kv-lead">—</div>
+        <div class="kpi-lbl">Avg Lead Time (wks)</div>
+        <div class="kpi-sub">Weeks before outbreak</div>
+      </div>
+      <div class="kpi-card kp-purple" style="animation-delay:.16s">
+        <span class="kpi-icon">📊</span>
+        <div class="kpi-val" id="kv-rate">—</div>
+        <div class="kpi-lbl">Detection Rate</div>
+        <div class="kpi-sub">During outbreak weeks</div>
+      </div>
+      <div class="kpi-card kp-amber" style="animation-delay:.24s">
+        <span class="kpi-icon">🌍</span>
+        <div class="kpi-val" id="kv-cities">—</div>
+        <div class="kpi-lbl">Cities Monitored</div>
+        <div class="kpi-sub">Across Africa</div>
+      </div>
+    </div>
+
+    <!-- Charts 2×2 -->
+    <div class="cg2">
+      <div class="chart-panel">
+        <div class="chart-lbl">🎨 Alert Level Distribution at Peak</div>
+        <div id="ch-donut"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-lbl">⏱ Lead Time by Scenario (weeks)</div>
+        <div id="ch-lead"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-lbl">🎯 Alert Precision by Level</div>
+        <div id="ch-prec"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-lbl">🔵 Detection Rate vs Lead Time</div>
+        <div id="ch-bubble"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+    </div>
+
+    <div class="sec-ctas">
+      <button class="btn btn-p" onclick="goto('alerts')">Explore Alerts &rarr;</button>
+      <button class="btn btn-ghost" onclick="goto('scenarios')">View Scenarios &rarr;</button>
+      <button class="btn btn-ghost" onclick="goto('models')">Model Performance &rarr;</button>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     ALERTS EXPLORER
+     ════════════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-alerts" data-idx="2">
+
+  <div class="sec-top">
+    <div class="sec-top-left">
+      <div class="sec-top-title">Alerts Explorer</div>
+      <div class="sec-top-sub">Weekly alert signals — 64 cities, 9 diseases</div>
+    </div>
+    <div class="sec-top-center" id="al-top-stats">
+      <div class="tstat"><span>Loading…</span></div>
+    </div>
+    <div class="sec-top-right">
+      <span class="top-clock" id="al-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="sec-body">
+    <!-- Filters -->
+    <div class="fbar">
+      <div class="fg"><label>City</label>
+        <select id="al-city" style="min-width:140px"><option value="">All Cities</option></select></div>
+      <div class="fg"><label>Disease</label>
+        <select id="al-dis" style="min-width:155px"><option value="">All Diseases</option></select></div>
+      <div class="fg"><label>From</label><input type="date" id="al-from"/></div>
+      <div class="fg"><label>To</label><input type="date" id="al-to"/></div>
+      <div class="fg">
+        <label>Alert Levels</label>
+        <div style="display:flex;gap:8px;align-items:center;margin-top:5px">
+          <label class="chk-lbl"><input type="checkbox" class="al-lv" value="Normal" checked> Normal</label>
+          <label class="chk-lbl"><input type="checkbox" class="al-lv" value="Watch" checked> Watch</label>
+          <label class="chk-lbl"><input type="checkbox" class="al-lv" value="Warning" checked> Warning</label>
+          <label class="chk-lbl"><input type="checkbox" class="al-lv" value="Emergency" checked> Emergency</label>
+        </div>
+      </div>
+      <button class="btn btn-p" onclick="refreshAlerts()">Filter</button>
+    </div>
+
+    <!-- Mini KPIs -->
+    <div class="mkpi-row">
+      <div class="mkpi"><span class="mkdot" style="background:var(--red)"></span><div><div class="mkval" id="mk-em">—</div><div class="mklbl">Emergency</div></div></div>
+      <div class="mkpi"><span class="mkdot" style="background:var(--amber)"></span><div><div class="mkval" id="mk-wa">—</div><div class="mklbl">Warning</div></div></div>
+      <div class="mkpi"><span class="mkdot" style="background:var(--blue)"></span><div><div class="mkval" id="mk-wt">—</div><div class="mklbl">Watch</div></div></div>
+      <div class="mkpi"><span class="mkdot" style="background:var(--t3)"></span><div><div class="mkval" id="mk-nm">—</div><div class="mklbl">Normal</div></div></div>
+    </div>
+
+    <!-- Full-width timeline -->
+    <div class="chart-panel" style="margin-bottom:13px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <span class="chart-lbl" style="margin:0">📈 Fusion Score Timeline</span>
+        <div style="display:flex;gap:8px">
+          <select id="tl-city" onchange="loadTimeline()" style="height:28px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--t1);font-size:11px;padding:0 8px;min-width:120px"><option value="">Select City…</option></select>
+          <select id="tl-dis"  onchange="loadTimeline()" style="height:28px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--t1);font-size:11px;padding:0 8px;min-width:140px"><option value="">Select Disease…</option></select>
+        </div>
+      </div>
+      <div id="ch-timeline"><div class="spin-box"><div class="spa-spin"></div></div></div>
+    </div>
+
+    <!-- 2-col: signals + heatmap -->
+    <div class="cg2">
+      <div class="chart-panel">
+        <div class="chart-lbl">🤖 Model Signals</div>
+        <div id="ch-signals"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+      <div class="chart-panel">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <span class="chart-lbl" style="margin:0">📅 Alert Heatmap</span>
+          <select id="hm-dis" onchange="loadHeatmap()" style="height:26px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--t1);font-size:11px;padding:0 8px"><option value="all">All Diseases</option></select>
+        </div>
+        <div id="ch-heatmap"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+    </div>
+
+    <!-- Alerts table -->
+    <div class="chart-panel" style="margin-bottom:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px">
+        <span class="chart-lbl" style="margin:0">📋 Alert Records</span>
+        <span style="font-size:11px;color:var(--t2)">
+          Showing <strong id="al-showing">—</strong> of <strong id="al-total">—</strong>
+        </span>
+      </div>
+      <div class="tbl-outer">
+        <table>
+          <thead><tr>
+            <th>City</th><th>Disease</th><th>Week</th>
+            <th>IF</th><th>DBSCAN</th><th>LSTM</th>
+            <th>LSTM Prob</th><th>Score</th><th>Level</th>
+          </tr></thead>
+          <tbody id="al-tbody">
+            <tr><td colspan="9"><div class="spin-box"><div class="spa-spin"></div></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pg" id="al-pg"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     SCENARIOS
+     ════════════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-scenarios" data-idx="3">
+
+  <div class="sec-top">
+    <div class="sec-top-left">
+      <div class="sec-top-title">Scenarios</div>
+      <div class="sec-top-sub">12 confirmed outbreak scenarios with early-warning analysis</div>
+    </div>
+    <div class="sec-top-center">
+      <div class="tstat"><span class="pdot pd-g" style="width:6px;height:6px;display:inline-block"></span>&nbsp;<strong>12/12</strong>&nbsp;Detected</div>
+      <div class="tsep"></div>
+      <div class="tstat"><strong>100%</strong>&nbsp;Detection Rate</div>
+    </div>
+    <div class="sec-top-right">
+      <span class="top-clock" id="sc-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="sec-body">
+    <div class="sc-grid" id="sc-grid">
+      <div class="spin-box" style="grid-column:1/-1;min-height:180px"><div class="spa-spin"></div></div>
+    </div>
+
+    <!-- Deep-dive panel -->
+    <div class="dd-panel" id="dd-panel">
+      <div class="dd-header">
+        <div class="dd-title" id="dd-title">—</div>
+        <button class="dd-close" onclick="closeDD()">&#10005;</button>
+      </div>
+      <div id="dd-chart"><div class="spin-box" style="min-height:260px"><div class="spa-spin"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     MODELS
+     ════════════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-models" data-idx="4">
+
+  <div class="sec-top">
+    <div class="sec-top-left">
+      <div class="sec-top-title">Model Performance</div>
+      <div class="sec-top-sub">Comparative evaluation — LSTM · Isolation Forest · DBSCAN</div>
+    </div>
+    <div class="sec-top-center">
+      <div class="tstat"><strong>3</strong>&nbsp;AI Models</div>
+      <div class="tsep"></div>
+      <div class="tstat">DBSCAN AUC&nbsp;<strong>0.921</strong></div>
+      <div class="tsep"></div>
+      <div class="tstat">LSTM F1&nbsp;<strong>0.644</strong></div>
+    </div>
+    <div class="sec-top-right">
+      <span class="top-clock" id="mo-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="sec-body">
+    <!-- Model cards -->
+    <div class="mc-grid" id="mc-grid">
+      <div class="spin-box" style="grid-column:1/-1;min-height:160px"><div class="spa-spin"></div></div>
+    </div>
+
+    <!-- Charts 2-col -->
+    <div class="cg2">
+      <div class="chart-panel">
+        <div class="chart-lbl">📡 Model Comparison Radar</div>
+        <div id="ch-radar"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+      <div class="chart-panel">
+        <div class="chart-lbl">⚙️ Fusion Score by Scenario</div>
+        <div id="ch-fusion"><div class="spin-box"><div class="spa-spin"></div></div></div>
+      </div>
+    </div>
+
+    <!-- LSTM timeline full-width -->
+    <div class="chart-panel" style="margin-bottom:0">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+        <span class="chart-lbl" style="margin:0">📈 LSTM Probability Timeline</span>
+        <div style="display:flex;gap:8px">
+          <select id="lstm-city" onchange="loadLSTM()" style="height:28px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--t1);font-size:11px;padding:0 8px;min-width:120px"></select>
+          <select id="lstm-dis"  onchange="loadLSTM()" style="height:28px;background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);border-radius:6px;color:var(--t1);font-size:11px;padding:0 8px;min-width:140px"></select>
+        </div>
+      </div>
+      <div id="ch-lstm"><div class="spin-box"><div class="spa-spin"></div></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ════════════════════════════════════════════════════════════════
+     DATA EXPLORER
+     ════════════════════════════════════════════════════════════════ -->
+<section class="sec" id="sec-explorer" data-idx="5">
+
+  <div class="sec-top">
+    <div class="sec-top-left">
+      <div class="sec-top-title">Data Explorer</div>
+      <div class="sec-top-sub">Inspect weekly signal records, LSTM predictions &amp; patient data</div>
+    </div>
+    <div class="sec-top-center">
+      <div class="tstat"><strong>76,612</strong>&nbsp;Signal Records</div>
+      <div class="tsep"></div>
+      <div class="tstat"><strong>50,000</strong>&nbsp;Patient Records</div>
+    </div>
+    <div class="sec-top-right">
+      <span class="top-clock" id="ex-clock">--:--:--</span>
+    </div>
+  </div>
+
+  <div class="sec-body">
+    <!-- Tabs -->
+    <div class="tab-row">
+      <button class="tab-b on"  onclick="switchExpTab('alerts',this)">Weekly Alerts</button>
+      <button class="tab-b"     onclick="switchExpTab('lstm',this)">LSTM Predictions</button>
+      <button class="tab-b"     onclick="switchExpTab('signals',this)">Signal Records</button>
+    </div>
+
+    <!-- ── Alerts Tab ── -->
+    <div class="tab-pnl on" id="xpnl-alerts">
+      <div class="fbar">
+        <div class="fg"><label>City</label>
+          <select id="xa-city" style="min-width:140px"><option value="">All Cities</option></select></div>
+        <div class="fg"><label>Disease</label>
+          <select id="xa-dis" style="min-width:155px"><option value="">All Diseases</option></select></div>
+        <div class="fg"><label>Min Score (0–5)</label>
+          <input type="number" id="xa-score" min="0" max="5" placeholder="0" style="width:80px"/></div>
+        <button class="btn btn-p" onclick="loadExpAlerts(1)">Filter</button>
+        <a href="/api/data/export/alerts" class="btn btn-g" style="text-decoration:none">&#8595; Export CSV</a>
+      </div>
+      <div class="chart-panel">
+        <div style="display:flex;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px">
+          <span class="chart-lbl" style="margin:0">Alert Records</span>
+          <span style="font-size:11px;color:var(--t2)">
+            <strong id="xa-show">—</strong> shown / <strong id="xa-tot">—</strong> total
+          </span>
+        </div>
+        <div class="tbl-outer"><table>
+          <thead><tr>
+            <th>City</th><th>Disease</th><th>Week</th>
+            <th>IF</th><th>DBSCAN</th><th>LSTM</th>
+            <th>LSTM Prob</th><th>Score</th><th>Level</th><th>Visits</th>
+          </tr></thead>
+          <tbody id="xa-tbody">
+            <tr><td colspan="10"><div class="spin-box"><div class="spa-spin"></div></div></td></tr>
+          </tbody>
+        </table></div>
+        <div class="pg" id="xa-pg"></div>
+      </div>
+    </div>
+
+    <!-- ── LSTM Tab ── -->
+    <div class="tab-pnl" id="xpnl-lstm">
+      <div class="fbar">
+        <div class="fg"><label>City</label>
+          <select id="xl-city" style="min-width:140px"><option value="">All Cities</option></select></div>
+        <div class="fg"><label>Disease</label>
+          <select id="xl-dis" style="min-width:155px"><option value="">All Diseases</option></select></div>
+        <button class="btn btn-p" onclick="loadExpLSTM(1)">Filter</button>
+        <a href="/api/data/export/lstm" class="btn btn-g" style="text-decoration:none">&#8595; Export CSV</a>
+      </div>
+      <div class="chart-panel"><div class="tbl-outer"><table>
+        <thead><tr>
+          <th>City</th><th>Disease</th><th>Target Date</th>
+          <th>LSTM Prob</th><th>LSTM Pred</th><th>True Label</th><th>Country</th>
+        </tr></thead>
+        <tbody id="xl-tbody">
+          <tr><td colspan="7"><div class="spin-box"><div class="spa-spin"></div></div></td></tr>
+        </tbody>
+      </table></div>
+      <div class="pg" id="xl-pg"></div></div>
+    </div>
+
+    <!-- ── Signals Tab ── -->
+    <div class="tab-pnl" id="xpnl-signals">
+      <div class="fbar">
+        <div class="fg"><label>City</label>
+          <select id="xs-city" style="min-width:140px"><option value="">All Cities</option></select></div>
+        <div class="fg"><label>Disease</label>
+          <select id="xs-dis" style="min-width:155px"><option value="">All Diseases</option></select></div>
+        <button class="btn btn-p" onclick="loadExpSignals(1)">Filter</button>
+        <a href="/api/data/export/signals" class="btn btn-g" style="text-decoration:none">&#8595; Export CSV</a>
+      </div>
+      <div class="chart-panel"><div class="tbl-outer"><table>
+        <thead><tr>
+          <th>City</th><th>Disease</th><th>Week</th>
+          <th>IF Flag</th><th>DBSCAN Flag</th>
+          <th>LSTM Prob</th><th>LSTM Pred</th><th>True Outbreak</th>
+        </tr></thead>
+        <tbody id="xs-tbody">
+          <tr><td colspan="8"><div class="spin-box"><div class="spa-spin"></div></div></td></tr>
+        </tbody>
+      </table></div>
+      <div class="pg" id="xs-pg"></div></div>
+    </div>
+
+  </div><!-- /sec-body -->
+</section>
+
+<!-- ─────────────────────────────────────── -->
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="/static/js/spa.js"></script>
+</body>
+</html>

@@ -1,0 +1,515 @@
+{% extends "base.html" %}
+{% block title %}Model Performance — EpiGuard Africa{% endblock %}
+{% block page_title %}Model Performance{% endblock %}
+{% block page_subtitle %}Comparative evaluation of LSTM, Isolation Forest, and DBSCAN models{% endblock %}
+
+{% block content %}
+
+<!-- ── Tabs Navigation Header ────────────────────────────────────── -->
+<div class="tabs-header-bar">
+  <button class="tab-btn active" data-target="tab-overview">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+    <span>Overview & Performance</span>
+  </button>
+  <button class="tab-btn" data-target="tab-lstm">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8l-5.1 5.2-2.8-2.7L7 14.3"></path></svg>
+    <span>LSTM Timeline Deep Dive</span>
+  </button>
+  <button class="tab-btn" data-target="tab-fusion">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+    <span>Fusion System Logic</span>
+  </button>
+  <button class="tab-btn" data-target="tab-limitations">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+    <span>System Limitations</span>
+  </button>
+</div>
+
+<!-- ═══ TAB 1: OVERVIEW & PERFORMANCE ══════════════════════════════ -->
+<div id="tab-overview" class="tab-content active">
+  <!-- Model Cards Grid -->
+  <div class="model-cards-grid mb-6" id="model-cards">
+    <div class="card" style="grid-column:1/-1;text-align:center;padding:40px;">
+      <div class="spinner"></div>
+    </div>
+  </div>
+
+  <!-- Radar & Weights Row -->
+  <div class="chart-grid-2 mb-6">
+    <div class="card min-w-0">
+      <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+        <div class="icon-scenarios" style="width:16px;height:16px;"></div>
+        Model Comparison Radar
+      </div>
+      <div id="chart-radar" style="min-height:300px;"><div class="spinner"></div></div>
+    </div>
+    <div class="card min-w-0">
+      <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+        <div class="kpi-anim-chart" style="width:18px;height:14px;gap:2px;"><span></span><span></span><span></span></div>
+        Fusion System Weights
+      </div>
+      <div id="chart-weights" style="min-height:300px;"><div class="spinner"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 2: LSTM TIMELINE DEEP DIVE ═════════════════════════════ -->
+<div id="tab-lstm" class="tab-content">
+  <div class="card chart-full mb-6">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span class="chart-icon-timeline"></span>
+        LSTM Probability Timeline
+      </span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <select id="lstm-city" onchange="loadLSTMChart()" style="background:var(--bg-primary);border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:5px 10px;font-size:12px;height:32px;"></select>
+        <select id="lstm-disease" onchange="loadLSTMChart()" style="background:var(--bg-primary);border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:5px 10px;font-size:12px;height:32px;"></select>
+      </div>
+    </div>
+    <div id="chart-lstm" style="min-height:300px;"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ═══ TAB 3: FUSION SYSTEM LOGIC & METRICS ═══════════════════════ -->
+<div id="tab-fusion" class="tab-content">
+  <!-- Fusion Stacked Bar & Precision Row -->
+  <div class="chart-grid-2 mb-6">
+    <div class="card min-w-0">
+      <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+        <div class="kpi-anim-chart" style="width:18px;height:14px;gap:2px;"><span></span><span></span><span></span></div>
+        Fusion Score Composition per Scenario
+      </div>
+      <div id="chart-fusion" style="min-height:280px;"><div class="spinner"></div></div>
+    </div>
+    <div class="card min-w-0">
+      <div class="card-title" style="display:flex;align-items:center;gap:8px;">
+        <div class="kpi-anim-target" style="width:16px;height:16px;"></div>
+        Alert Precision by Level
+      </div>
+      <div id="chart-prec2" style="min-height:280px;"><div class="spinner"></div></div>
+    </div>
+  </div>
+
+  <!-- Flowchart & Table Logic Card -->
+  <div class="card w-full mb-6">
+    <div class="card-title">⚙️ Fusion Score Calculation Logic</div>
+    <div style="display:flex; flex-direction:column; gap:20px; padding:15px 0;">
+      
+      <!-- Flowchart -->
+      <div class="fusion-flowchart" style="display:flex; align-items:center; justify-content:space-around; background:rgba(255,255,255,0.02); padding:24px; border-radius:8px; border:1px solid rgba(255,255,255,0.05); flex-wrap:wrap; gap:20px;">
+        
+        <!-- Box 1 -->
+        <div style="text-align:center; background:#161B22; padding:15px; border-radius:6px; border:1px solid rgba(108,99,255,0.3); min-width:140px; box-shadow:0 0 10px rgba(108,99,255,0.15);">
+          <strong style="color:#6C63FF; font-size:12px; text-transform:uppercase;">Isolation Forest</strong>
+          <div style="font-size:20px; font-weight:700; color:#EEF2FF; margin-top:8px;">IF_FLAG</div>
+          <div style="font-size:11px; color:#8B95A7; margin-top:4px;">Weight: <strong>×1</strong></div>
+        </div>
+        
+        <div style="font-size:24px; color:#5A6578;">&rarr;</div>
+        
+        <!-- Box 2 -->
+        <div style="text-align:center; background:#161B22; padding:15px; border-radius:6px; border:1px solid rgba(0,212,255,0.3); min-width:140px; box-shadow:0 0 10px rgba(0,212,255,0.15);">
+          <strong style="color:#00D4FF; font-size:12px; text-transform:uppercase;">DBSCAN Clustering</strong>
+          <div style="font-size:20px; font-weight:700; color:#EEF2FF; margin-top:8px;">DBSCAN_FLAG</div>
+          <div style="font-size:11px; color:#8B95A7; margin-top:4px;">Weight: <strong>×2</strong></div>
+        </div>
+        
+        <div style="font-size:24px; color:#5A6578;">&rarr;</div>
+        
+        <!-- Box 3 -->
+        <div style="text-align:center; background:#161B22; padding:15px; border-radius:6px; border:1px solid rgba(245,158,11,0.3); min-width:140px; box-shadow:0 0 10px rgba(245,158,11,0.15);">
+          <strong style="color:#F59E0B; font-size:12px; text-transform:uppercase;">LSTM Forecast</strong>
+          <div style="font-size:20px; font-weight:700; color:#EEF2FF; margin-top:8px;">lstm_pred</div>
+          <div style="font-size:11px; color:#8B95A7; margin-top:4px;">Weight: <strong>×2</strong></div>
+        </div>
+        
+        <div style="font-size:24px; color:#5A6578;">=</div>
+        
+        <!-- Central core -->
+        <div style="text-align:center; background:linear-gradient(135deg, #1E1B4B, #311042); padding:18px 20px; border-radius:8px; border:1px solid rgba(108,99,255,0.5); min-width:165px; box-shadow:0 0 15px rgba(108,99,255,0.3);">
+          <strong style="color:#EEF2FF; font-size:13px; text-transform:uppercase; letter-spacing:0.5px;">Fusion Score</strong>
+          <div style="font-size:26px; font-weight:800; color:#EEF2FF; margin-top:8px; font-family:'JetBrains Mono',monospace;">0 – 5 pts</div>
+          <div style="font-size:10px; color:#8B95A7; margin-top:4px;">Point-based sum</div>
+        </div>
+        
+        <div style="font-size:24px; color:#5A6578;">&rarr;</div>
+        
+        <!-- Output alerts -->
+        <div style="display:flex; flex-direction:column; gap:4px; min-width:150px;">
+          <div style="display:flex; justify-content:space-between; font-size:11px; background:rgba(239,68,68,0.1); border:1px solid rgba(239,68,68,0.2); padding:4px 10px; border-radius:4px; color:#FCA5A5;">
+            <span>Emergency</span><strong>4–5 pts</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; background:rgba(245,158,11,0.1); border:1px solid rgba(245,158,11,0.2); padding:4px 10px; border-radius:4px; color:#FDE047;">
+            <span>Warning</span><strong>3 pts</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; background:rgba(59,130,246,0.1); border:1px solid rgba(59,130,246,0.2); padding:4px 10px; border-radius:4px; color:#93C5FD;">
+            <span>Watch</span><strong>1–2 pts</strong>
+          </div>
+          <div style="display:flex; justify-content:space-between; font-size:11px; background:rgba(107,114,128,0.1); border:1px solid rgba(107,114,128,0.2); padding:4px 10px; border-radius:4px; color:#D1D5DB;">
+            <span>Normal</span><strong>0 pts</strong>
+          </div>
+        </div>
+        
+      </div>
+      
+      <!-- Strengths & Weaknesses Table -->
+      <div style="margin-top:10px;">
+        <h3 style="font-size:14px; font-weight:700; color:#EEF2FF; margin-bottom:12px; display:flex; align-items:center; gap:6px;">
+          <span style="font-size:16px;">⚔️</span> Models Analytical Strengths &amp; Weaknesses
+        </h3>
+        <table style="width:100%; border-collapse:collapse; text-align:left; font-size:12px; background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.05); border-radius:6px;">
+          <thead>
+            <tr style="background:rgba(255,255,255,0.03); border-bottom:1px solid rgba(255,255,255,0.05); color:#EEF2FF;">
+              <th style="padding:10px 14px; font-weight:600; width:20%;">Model</th>
+              <th style="padding:10px 14px; font-weight:600; color:#10B981;">Strengths</th>
+              <th style="padding:10px 14px; font-weight:600; color:#EF4444;">Weaknesses</th>
+              <th style="padding:10px 14px; font-weight:600; width:15%;">Metric Target</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+              <td style="padding:12px 14px; font-weight:700; color:#6C63FF;">Isolation Forest</td>
+              <td style="padding:12px 14px; color:#D1D5DB; line-height:1.4;">Unsupervised anomaly detection. Provides the longest early-warning lead time (~35 days average). Sensitive to initial outlier cases.</td>
+              <td style="padding:12px 14px; color:#D1D5DB; line-height:1.4;">High false positive rate if utilized alone (F1 score of 0.123). Requires other models to filter noise.</td>
+              <td style="padding:12px 14px; font-weight:500; font-family:'JetBrains Mono'; color:#8B95A7;">Lead Time</td>
+            </tr>
+            <tr style="border-bottom:1px solid rgba(255,255,255,0.03);">
+              <td style="padding:12px 14px; font-weight:700; color:#00D4FF;">DBSCAN Clustering</td>
+              <td style="padding:12px 14px; color:#D1D5DB; line-height:1.4;">Spatial-temporal clustering. Excellent discriminative performance (ROC-AUC of 0.921, Precision of 0.489). Filters ambient noise.</td>
+              <td style="padding:12px 14px; color:#D1D5DB; line-height:1.4;">Density-based thresholds are not directly portable to narrow time series analysis windows due to data volume changes.</td>
+              <td style="padding:12px 14px; font-weight:500; font-family:'JetBrains Mono'; color:#8B95A7;">ROC-AUC / FPR</td>
+            </tr>
+            <tr>
+              <td style="padding:12px 14px; font-weight:700; color:#F59E0B;">LSTM Recurrent Network</td>
+              <td style="padding:12px 14px; color:#D1D5DB; line-height:1.4;">Deep learning recurrent forecasting. Models temporal sequence dependencies accurately. Achieves high F1 precision (0.644) for next-week forecast.</td>
+              <td style="padding:12px 14px; color:#D1D5DB; line-height:1.4;">Requires a substantial amount of positive outbreak training instances. Not available for 2 out of 12 low-signal scenarios.</td>
+              <td style="padding:12px 14px; font-weight:500; font-family:'JetBrains Mono'; color:#8B95A7;">F1 Score</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TAB 4: SYSTEM LIMITATIONS ══════════════════════════════════ -->
+<div id="tab-limitations" class="tab-content">
+  <div class="card w-full">
+    <div class="card-title">⚠️ Known System Limitations</div>
+    <div class="limitations-grid" id="limitations-grid">
+      <div class="limit-card"><div class="spinner" style="height:60px;"></div></div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const PL = window.PLOT_LAYOUT;
+const PC = window.PLOT_CONFIG;
+const AC = { Normal:'#6B7280', Watch:'#3B82F6', Warning:'#F59E0B', Emergency:'#EF4444' };
+
+async function loadModels() {
+  const ds = localStorage.getItem('selectedDataSource');
+  let sumUrl = '/api/models/summary';
+  let filUrl = '/api/models/filters';
+  if (ds && ds !== 'historical') {
+    sumUrl += '?prediction_id=' + ds;
+    filUrl += '?prediction_id=' + ds;
+  }
+
+  try {
+    // Run both fetches in parallel for speed
+    const [sumRes, filRes] = await Promise.all([
+      fetch(sumUrl),
+      fetch(filUrl),
+    ]);
+    if (!sumRes.ok) throw new Error(`Summary API: HTTP ${sumRes.status}`);
+    if (!filRes.ok) throw new Error(`Filters API: HTTP ${filRes.status}`);
+    const sum = await sumRes.json();
+    const fil = await filRes.json();
+
+    // Render static (data-driven) charts first — no extra fetch needed
+    renderModelCards(sum.models);
+    renderRadar(sum.models);
+    renderFusionComposition(sum.scenario_fusion);
+    renderPrecision(sum.precision);
+    renderWeights(sum.fusion.weights);
+    renderLimitations(sum.limitations);
+    populateDropdowns(fil);  // this triggers loadLSTMChart()
+    
+    // Initialize interactive tabs
+    initTabs();
+  } catch(err) {
+    console.error('loadModels error:', err);
+    ['chart-radar','chart-fusion','chart-lstm','chart-prec2','chart-weights'].forEach(id =>
+      showError(id, err.message || 'Could not load model data'));
+  }
+}
+
+// ── Tab Layout Navigation Logic ──────────────────────────────────────
+function initTabs() {
+  const tabButtons = document.querySelectorAll('.tab-btn');
+  tabButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.getAttribute('data-target');
+      switchTab(targetId);
+    });
+  });
+
+  // Restore active tab from local storage or default to 'tab-overview'
+  const savedTab = localStorage.getItem('active_model_tab') || 'tab-overview';
+  switchTab(savedTab);
+}
+
+function switchTab(tabId) {
+  // Hide all tab content elements and clear active classes on tabs
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+  
+  // Show target content and button
+  const activeContent = document.getElementById(tabId);
+  const activeBtn = document.querySelector(`.tab-btn[data-target="${tabId}"]`);
+  
+  if (activeContent && activeBtn) {
+    activeContent.classList.add('active');
+    activeBtn.classList.add('active');
+    localStorage.setItem('active_model_tab', tabId);
+    
+    // Resize Plotly charts in active tab to prevent them collapsing in width
+    setTimeout(() => {
+      activeContent.querySelectorAll('.js-plotly-plot').forEach(el => {
+        Plotly.Plots.resize(el);
+      });
+    }, 50); // Small timeout to ensure DOM visibility renders correctly
+  }
+}
+
+function renderModelCards(models) {
+  const CFG = {
+    LSTM:  { icon: '🧠', color:'#F59E0B', tagline:'Next-week outbreak prediction' },
+    IF:    { icon: '🌲', color:'#6C63FF', tagline:'Anomaly detection outlier profiling' },
+    DBSCAN:{ icon: '🔵', color:'#00D4FF', tagline:'Density-based case clustering' },
+  };
+  document.getElementById('model-cards').innerHTML = ['LSTM','IF','DBSCAN'].map(k => {
+    const m = models[k];
+    const c = CFG[k];
+    const metricsHtml = Object.entries(m.metrics).map(([key,val]) => `
+      <div class="metric-chip" style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); border-radius:6px; padding:6px 10px; text-align:center;">
+        <div class="metric-chip-val" style="color:${c.color}; font-weight:800; font-size:14px;">${typeof val==='number'&&val<1?val.toFixed(3):val}</div>
+        <div class="metric-chip-lbl" style="font-size:9px; color:#8B95A7; text-transform:uppercase; margin-top:2px;">${key.replace(/_/g,' ')}</div>
+      </div>`).join('');
+      
+    return `
+      <div class="model-card" data-model="${k}" style="animation-delay:${['LSTM','IF','DBSCAN'].indexOf(k)*0.08}s; background:rgba(22,27,34,0.7); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:20px; display:flex; flex-direction:column; gap:12px;">
+        <div class="model-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <span style="font-size:24px;">${c.icon}</span>
+          <span style="font-size:10px; font-weight:800; text-transform:uppercase; color:#10B981; background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.2); padding:3px 8px; border-radius:12px;">${m.status}</span>
+        </div>
+        <div>
+          <div class="model-name" style="font-size:16px; font-weight:800; color:#EEF2FF;">${m.name}</div>
+          <div class="model-tagline" style="font-size:11px; color:#8B95A7; margin-top:2px;">${c.tagline}</div>
+        </div>
+        
+        <div style="font-size:11px; color:#EEF2FF; background:rgba(255,255,255,0.02); padding:10px; border-radius:6px; border-left:3px solid ${c.color};">
+          <strong>Purpose:</strong> ${m.purpose}
+        </div>
+        
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; font-size:11px; color:#EEF2FF;">
+          <div><span style="color:#8B95A7; font-size:10px; display:block;">VERSION</span><strong>${m.version}</strong></div>
+          <div><span style="color:#8B95A7; font-size:10px; display:block;">THRESHOLD</span><strong>${m.threshold}</strong></div>
+          <div><span style="color:#8B95A7; font-size:10px; display:block;">LATENCY</span><strong>${m.inference_time}</strong></div>
+          <div><span style="color:#8B95A7; font-size:10px; display:block;">MEM USAGE</span><strong>${m.memory_usage}</strong></div>
+        </div>
+        
+        <div class="model-metrics" style="display:flex; gap:8px; flex-wrap:wrap; margin-top:4px;">${metricsHtml}</div>
+        
+        <div style="font-size:11px; border-top:1px solid rgba(255,255,255,0.06); padding-top:10px; display:flex; flex-direction:column; gap:6px;">
+          <div><span style="color:#8B95A7;">Training Set:</span> <span style="color:#EEF2FF; font-weight:600;">${m.training_dataset}</span></div>
+          <div><span style="color:#8B95A7;">Coverage:</span> <span style="color:#EEF2FF; font-weight:600;">${m.coverage}</span></div>
+        </div>
+
+        <div style="font-size:11px; background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:6px; padding:10px; color:#8B95A7;">
+          <strong style="color:#EEF2FF; display:block; margin-bottom:4px; font-size:10px; text-transform:uppercase;">Input Features</strong>
+          ${m.input_features}
+        </div>
+        
+        <div style="font-size:11px; background:rgba(255,255,255,0.01); border:1px solid rgba(255,255,255,0.03); border-radius:6px; padding:10px; color:#8B95A7; margin-top:2px;">
+          <strong style="color:#EEF2FF; display:block; margin-bottom:4px; font-size:10px; text-transform:uppercase;">Documentation</strong>
+          ${m.documentation}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderRadar(models) {
+  const cats = ['F1 Score','Precision','Recall','ROC-AUC','Coverage'];
+  const el = document.getElementById('chart-radar');
+  if (el) el.innerHTML = '';
+  Plotly.newPlot(el, [
+    { name:'LSTM',   color:'#F59E0B', vals:[0.644, 0.50, 0.60, 0.75, 0.83] },
+    { name:'IF',     color:'#6C63FF', vals:[0.123, 0.20, 0.55, 0.70, 1.00] },
+    { name:'DBSCAN', color:'#00D4FF', vals:[0.470, 0.489, 0.460, 0.921, 1.00] },
+  ].map(t => ({
+    type:'scatterpolar', mode:'lines+markers', fill:'toself',
+    r:[...t.vals, t.vals[0]], theta:[...cats, cats[0]], name:t.name,
+    line:{ color:t.color, width:2 }, marker:{ color:t.color, size:5 },
+    fillcolor: t.color + '1A',
+  })), {
+    ...PL,
+    polar:{ bgcolor:'rgba(0,0,0,0)',
+      radialaxis:{ visible:true, range:[0,1.1], gridcolor:'rgba(255,255,255,0.07)', tickfont:{ size:9 } },
+      angularaxis:{ gridcolor:'rgba(255,255,255,0.07)', tickfont:{ size:11, color:'#8B95A7' } } },
+    legend:{ orientation:'h', y:-0.15, bgcolor:'rgba(0,0,0,0)', font:{ color:'#8B95A7' } },
+    margin:{ t:20, r:20, b:60, l:20 },
+  }, PC);
+}
+
+function renderFusionComposition(data) {
+  const el = document.getElementById('chart-fusion');
+  if (el) el.innerHTML = '';
+  Plotly.newPlot(el, [
+    { type:'bar', name:'IF (×1)',     x:data.map(d=>d.label), y:data.map(d=>d.IF),     marker:{ color:'rgba(108,99,255,0.8)' } },
+    { type:'bar', name:'DBSCAN (×2)',x:data.map(d=>d.label), y:data.map(d=>d.DBSCAN), marker:{ color:'rgba(0,212,255,0.8)' } },
+    { type:'bar', name:'LSTM (×2)',   x:data.map(d=>d.label), y:data.map(d=>d.LSTM),   marker:{ color:'rgba(245,158,11,0.8)' } },
+  ], {
+    ...PL, barmode:'stack',
+    yaxis:{ ...PL.yaxis, title:{ text:'Peak Score', font:{ color:'#8B95A7' } }, range:[0,6] },
+    xaxis:{ ...PL.xaxis, tickangle:-35, tickfont:{ size:9 } },
+    legend:{ orientation:'h', y:-0.28, bgcolor:'rgba(0,0,0,0)', font:{ color:'#8B95A7' } },
+    margin:{ t:20, r:20, b:90, l:52 },
+  }, PC);
+}
+
+function renderPrecision(prec) {
+  const el = document.getElementById('chart-prec2');
+  if (el) el.innerHTML = '';
+  const labels = ['Emergency','Warning','Watch'];
+  const values = [prec.Emergency*100, prec.Warning*100, prec.Watch*100];
+  Plotly.newPlot(el, [{
+    type:'bar', x:labels, y:values,
+    marker:{ color:['#EF4444','#F59E0B','#3B82F6'], opacity:0.85 },
+    text:values.map(v=>v.toFixed(1)+'%'), textposition:'outside',
+    textfont:{ color:'#EEF2FF', size:12, family:'Oswald' },
+    hovertemplate:'<b>%{x}</b><br>Precision: %{y:.2f}%<extra></extra>',
+  }], {
+    ...PL,
+    yaxis:{ ...PL.yaxis, title:{ text:'Precision (%)', font:{ color:'#8B95A7' } }, range:[0,115] },
+  }, PC);
+}
+
+function renderWeights(weights) {
+  const el = document.getElementById('chart-weights');
+  if (el) el.innerHTML = '';
+  Plotly.newPlot(el, [{
+    type:'pie', labels:['Isolation Forest','DBSCAN','LSTM'],
+    values:[weights.Isolation_Forest||1, weights.DBSCAN||2, weights.LSTM||2],
+    hole:0.48,
+    marker:{ colors:['#6C63FF','#00D4FF','#F59E0B'] },
+    textinfo:'label+value', textfont:{ color:'#EEF2FF', size:12 },
+    hovertemplate:'<b>%{label}</b><br>Weight: ×%{value}<extra></extra>',
+  }], {
+    ...PL, margin:{ t:20, r:20, b:20, l:20 },
+    annotations:[{ text:'<b>Fusion</b>', x:0.5, y:0.5,
+      font:{ size:14, color:'#EEF2FF', family:'Oswald' }, showarrow:false }],
+  }, PC);
+}
+
+function renderLimitations(limits) {
+  const colors = ['#F59E0B','#EF4444','#F59E0B','#EF4444','#F59E0B','#F59E0B'];
+  document.getElementById('limitations-grid').innerHTML = limits.map((txt, i) => {
+    const col = colors[i] || '#F59E0B';
+    return `<div class="limit-card">
+      <h4><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${col};margin-right:6px;box-shadow:0 0 6px ${col};"></span> Limitation ${i+1}</h4>
+      <p>${txt}</p>
+    </div>`;
+  }).join('');
+}
+
+function populateDropdowns(fil) {
+  const cityEl = document.getElementById('lstm-city');
+  const disEl  = document.getElementById('lstm-disease');
+  (fil.cities  || []).forEach(c => cityEl.add(new Option(c, c)));
+  (fil.diseases|| []).forEach(d => disEl.add(new Option(d, d)));
+  // Set default scenario city/disease
+  if (fil.cities && fil.cities.includes('Kinshasa')) cityEl.value = 'Kinshasa';
+  if (fil.diseases && fil.diseases.includes('Ebola virus disease')) disEl.value = 'Ebola virus disease';
+  loadLSTMChart();
+}
+
+let lstmAbort = null;
+let lstmLoading = false;
+async function loadLSTMChart() {
+  const city = document.getElementById('lstm-city').value;
+  const dis  = document.getElementById('lstm-disease').value;
+  if (!city || !dis) return;
+  // Cancel previous in-flight request
+  if (lstmAbort) { lstmAbort.abort(); lstmAbort = null; }
+  if (lstmLoading) return;
+  const el = document.getElementById('chart-lstm');
+  el.innerHTML = '<div class="spinner"></div>';
+  lstmLoading = true;
+  lstmAbort = new AbortController();
+  try {
+    const ds = localStorage.getItem('selectedDataSource');
+    let url = `/api/models/lstm-timeline?city=${encodeURIComponent(city)}&disease=${encodeURIComponent(dis)}`;
+    if (ds && ds !== 'historical') {
+      url += '&prediction_id=' + ds;
+    }
+    
+    const r = await fetch(url, { signal: lstmAbort.signal });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (!d.dates || d.dates.length === 0) {
+      showNoData('chart-lstm', 'No LSTM data for this selection',
+        'This city/disease has no LSTM predictions in the dataset.');
+      return;
+    }
+
+    const shapes = [], annots = [];
+    if (d.outbreak_start) {
+      shapes.push({ type:'line', x0:d.outbreak_start, x1:d.outbreak_start, y0:0, y1:1,
+        line:{ color:'#EF4444', dash:'dash', width:2 } });
+      annots.push({ x:d.outbreak_start, y:1, text:'Outbreak Start', showarrow:false,
+        font:{ color:'#EF4444', size:10 }, xanchor:'left', xshift:5 });
+    }
+    shapes.push({ type:'line', x0:d.dates[0], x1:d.dates[d.dates.length-1], y0:0.5, y1:0.5,
+      line:{ color:'rgba(255,255,255,0.2)', dash:'dot', width:1.5 } });
+    annots.push({ x:d.dates[Math.floor(d.dates.length/5)], y:0.5, text:'Threshold 0.5',
+      showarrow:false, font:{ color:'rgba(255,255,255,0.35)', size:10 }, yanchor:'bottom', yshift:5 });
+
+    el.innerHTML = '';
+    Plotly.newPlot(el, [
+      { x:d.dates, y:d.lstm_prob, type:'scatter', mode:'lines', name:'LSTM Probability',
+        line:{ color:'#F59E0B', width:2.5 },
+        fill:'tozeroy', fillcolor:'rgba(245,158,11,0.07)' },
+      { x:d.dates.filter((_,i)=>d.y_true[i]===1),
+        y:d.lstm_prob.filter((_,i)=>d.y_true[i]===1),
+        type:'scatter', mode:'markers', name:'True Outbreak Week',
+        marker:{ color:'#EF4444', size:7, symbol:'circle' } },
+      { x:d.dates.filter((_,i)=>d.lstm_pred[i]===1&&d.y_true[i]===0),
+        y:d.lstm_prob.filter((_,i)=>d.lstm_pred[i]===1&&d.y_true[i]===0),
+        type:'scatter', mode:'markers', name:'False Positive',
+        marker:{ color:'#F59E0B', size:6, symbol:'x' } },
+    ], {
+      ...PL, shapes, annotations:annots,
+      xaxis:{ ...PL.xaxis, type:'date', tickformat:'%b %Y' },
+      yaxis:{ ...PL.yaxis, title:{ text:'LSTM Probability', font:{ color:'#8B95A7' } }, range:[-0.05,1.1] },
+      legend:{ orientation:'h', y:-0.2, bgcolor:'rgba(0,0,0,0)', font:{ color:'#8B95A7' } },
+    }, PC);
+  } catch(e) {
+    if (e.name === 'AbortError') return;
+    console.error('loadLSTMChart error:', e);
+    showError('chart-lstm', e.message);
+  } finally {
+    lstmLoading = false;
+    lstmAbort = null;
+  }
+}
+
+loadModels();
+</script>
+
+{% endblock %}

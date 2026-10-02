@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}500 Error — EpiGuard Africa{% endblock %}
+{% block page_title %}Internal Server Error{% endblock %}
+{% block content %}
+<div class="card" style="text-align: center; padding: 40px;">
+    <div style="font-size: 72px; margin-bottom: 20px; color: var(--alert-emergency);">⚠️</div>
+    <h2>500 — System Error</h2>
+    <p style="color: var(--text-muted); margin-bottom: 20px;">An internal error has occurred while processing your request. Please try refreshing or contact admin if it persists.</p>
+    <a href="{{ url_for('overview.index') }}" class="nav-link" style="display: inline-block; background-color: var(--primary); color: white; padding: 10px 20px; border-radius: 6px; text-decoration: none;">Return to Dashboard</a>
+</div>
+{% endblock %}

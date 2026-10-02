@@ -1,0 +1,13 @@
+CITY,DISEASE,lstm_available,first_alert_date,lead_time_weeks,max_alert_level,detection_rate,detected
+Kinshasa,Ebola virus disease,True,2020-06-08,7.857142857142857,Warning,1.0,True
+Lagos,Lassa fever,True,2020-11-16,6.714285714285714,Warning,1.0,True
+Nairobi,Cholera,True,2021-02-22,5.428571428571429,Warning,1.0,True
+Addis Ababa,Malaria,True,2021-07-19,6.285714285714286,Warning,1.0,True
+Kampala,Ebola virus disease,True,2022-08-08,3.7142857142857144,Warning,1.0,True
+Khartoum,Cholera,True,2022-05-23,5.571428571428571,Warning,1.0,True
+Cairo,COVID-19,True,2020-11-16,6.714285714285714,Warning,1.0,True
+Goma,Mpox,False,2022-11-28,5.142857142857143,Watch,1.0,True
+Dar es Salaam,Dengue fever,True,2022-02-07,3.5714285714285716,Warning,1.0,True
+Kano,Meningitis,True,2021-11-29,0.2857142857142857,Warning,1.0,True
+Mansoura,Typhoid fever,False,2022-03-21,6.142857142857143,Watch,0.6666666666666666,True
+Lusaka,Cholera,True,2022-12-12,3.0,Warning,1.0,True

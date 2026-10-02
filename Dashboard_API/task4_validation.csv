@@ -1,0 +1,13 @@
+CITY,DISEASE,in_test_period,lstm_excluded,first_alert_date,lead_time_weeks,max_alert_level,detected
+Kinshasa,Ebola virus disease,True,False,,0.0,,False
+Lagos,Lassa fever,True,False,,0.0,,False
+Nairobi,Cholera,True,False,,0.0,,False
+Addis Ababa,Malaria,True,False,,0.0,,False
+Kampala,Ebola virus disease,True,False,,0.0,,False
+Khartoum,Cholera,True,False,,0.0,,False
+Cairo,COVID-19,True,False,,0.0,,False
+Goma,Mpox,False,True,,,,False
+Dar es Salaam,Dengue fever,True,False,,0.0,,False
+Kano,Meningitis,True,False,,0.0,,False
+Mansoura,Typhoid fever,False,True,,,,False
+Lusaka,Cholera,True,False,,0.0,,False

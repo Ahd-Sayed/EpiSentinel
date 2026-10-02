@@ -1,0 +1,115 @@
+{
+  "models": {
+    "IsolationForest": {
+      "file": "artifacts/task3_iso_forest.pkl",
+      "features": [
+        "sym_fever",
+        "sym_chills",
+        "sym_headache",
+        "sym_fatigue",
+        "sym_vomiting",
+        "sym_diarrhea",
+        "sym_cough",
+        "sym_shortness_of_breath",
+        "sym_chest_pain",
+        "sym_rash",
+        "sym_muscle_pain",
+        "sym_abdominal_pain",
+        "sym_night_sweats",
+        "sym_weight_loss",
+        "sym_jaundice",
+        "sym_stiff_neck",
+        "sym_sensitivity_to_light",
+        "sym_red_eyes",
+        "sym_runny_nose",
+        "sym_sore_throat",
+        "sym_hemorrhage",
+        "sym_sweating",
+        "sym_dehydration",
+        "sym_muscle_cramps",
+        "sym_loss_of_smell",
+        "sym_swollen_lymph_nodes",
+        "sym_pain_behind_eyes",
+        "sym_general_weakness",
+        "DAY_INDEX_NORM",
+        "AGE_AT_VISIT_NORM",
+        "COMORBIDITY_COUNT_NORM",
+        "RECENT_CASE_COUNT_NORM"
+      ],
+      "contamination": 0.025
+    },
+    "DBSCAN": {
+      "params_file": "artifacts/task3_dbscan_params.pkl",
+      "pca_file": "artifacts/task3_pca.pkl",
+      "pca_components": 8,
+      "features_after_pca": [
+        "pca_0",
+        "pca_1",
+        "pca_2",
+        "pca_3",
+        "pca_4",
+        "pca_5",
+        "pca_6",
+        "pca_7",
+        "DAY_INDEX_NORM",
+        "RECENT_CASE_COUNT_NORM"
+      ],
+      "threshold": 635.7673751686909
+    },
+    "RecentCaseRate": {
+      "scaler_file": "artifacts/case_rate_scaler.pkl",
+      "window_days": 7
+    }
+  },
+  "test_metrics": {
+    "IsolationForest": {
+      "precision": 0.1268,
+      "recall": 0.1189,
+      "f1": 0.1228,
+      "roc_auc": 0.7523,
+      "fpr": 0.0231
+    },
+    "DBSCAN": {
+      "precision": 0.4897,
+      "recall": 0.4618,
+      "f1": 0.4753,
+      "roc_auc": 0.9233,
+      "fpr": 0.0136
+    }
+  },
+  "early_warning": {
+    "IsolationForest": {
+      "avg_lead_days": 20.6,
+      "max_lead_days": 40,
+      "events_with_warning": 22501,
+      "total_events": 25421
+    },
+    "DBSCAN": {
+      "avg_lead_days": 18.4,
+      "max_lead_days": 40,
+      "events_with_warning": 11740,
+      "total_events": 25421
+    }
+  },
+  "output_files": {
+    "artifacts": [
+      "artifacts/encoders.pkl",
+      "artifacts/scaler.pkl",
+      "artifacts/case_rate_scaler.pkl",
+      "artifacts/train_data.csv",
+      "artifacts/val_data.csv",
+      "artifacts/test_data.csv",
+      "artifacts/task3_iso_forest.pkl",
+      "artifacts/task3_pca.pkl",
+      "artifacts/task3_dbscan_params.pkl"
+    ],
+    "results": [
+      "results/task3_metadata.json",
+      "results/task3_model_comparison.csv",
+      "results/iso_forest_cm.png",
+      "results/dbscan_cm.png",
+      "results/task3_roc_pr_curves.png",
+      "results/task3_lead_time.png"
+    ]
+  }
+}

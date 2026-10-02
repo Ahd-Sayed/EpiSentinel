@@ -1,0 +1,907 @@
+{% extends "base.html" %}
+{% block title %}Alerts Explorer — EpiGuard Africa{% endblock %}
+{% block page_title %}Alerts Explorer{% endblock %}
+{% block page_subtitle %}Interactive exploration of weekly alerts across all cities and diseases{% endblock %}
+
+{% block content %}
+<style>
+  /* Premium Tab Styles */
+  .tab-container {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 24px;
+    padding-bottom: 2px;
+  }
+  .tab-btn {
+    background: none;
+    border: none;
+    border-bottom: 2.5px solid transparent;
+    color: var(--text-3);
+    padding: 10px 20px;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+  .tab-btn:hover {
+    color: var(--text-1);
+  }
+  .tab-btn.active {
+    color: #EEF2FF;
+    border-bottom-color: var(--accent);
+    text-shadow: 0 0 10px rgba(108,99,255,0.4);
+  }
+  .tab-content {
+    display: none;
+    animation: fadeIn 0.4s ease both;
+  }
+  .tab-content.active {
+    display: block;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .cs-trigger {
+    min-height: 36px;
+    height: auto !important;
+    padding: 4px 11px !important;
+  }
+  .cs-option {
+    padding: 4px 10px !important;
+  }
+
+  /* KPI layout updates for Sparklines */
+  .mini-kpi {
+    justify-content: space-between !important;
+  }
+  .mini-kpi-content {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+  }
+  .kpi-sparkline {
+    width: 90px;
+    height: 32px;
+    margin-left: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+</style>
+
+<!-- ── Filter Bar ───────────────────────────────────────────────────── -->
+<div class="filter-bar" id="filter-bar">
+
+  <!-- City custom select -->
+  <div class="filter-group">
+    <label>City</label>
+    <div class="custom-select" id="cs-city">
+      <button class="cs-trigger" id="cs-city-trigger" type="button"
+              onclick="toggleDropdown('cs-city', event)">
+        <span class="cs-label" id="cs-city-label">All Cities</span>
+        <span class="cs-arrow">▾</span>
+      </button>
+      <div class="cs-dropdown" id="cs-city-list"></div>
+    </div>
+  </div>
+
+  <!-- Disease custom select -->
+  <div class="filter-group">
+    <label>Disease</label>
+    <div class="custom-select" id="cs-disease">
+      <button class="cs-trigger" id="cs-disease-trigger" type="button"
+              onclick="toggleDropdown('cs-disease', event)">
+        <span class="cs-label" id="cs-disease-label">All Diseases</span>
+        <span class="cs-arrow">▾</span>
+      </button>
+      <div class="cs-dropdown" id="cs-disease-list"></div>
+    </div>
+  </div>
+
+  <!-- Date range -->
+  <div class="filter-group">
+    <label>From Week</label>
+    <input type="date" id="f-from"/>
+  </div>
+  <div class="filter-group">
+    <label>To Week</label>
+    <input type="date" id="f-to"/>
+  </div>
+
+  <!-- Alert levels -->
+  <div class="checkbox-group">
+    <label>Alert Level</label>
+    <div class="checkbox-row">
+      <label class="checkbox-item"><input type="checkbox" class="level-cb" value="Normal"    checked/> <span style="color:var(--alert-normal)">Normal</span></label>
+      <label class="checkbox-item"><input type="checkbox" class="level-cb" value="Watch"     checked/> <span style="color:var(--alert-watch)">Watch</span></label>
+      <label class="checkbox-item"><input type="checkbox" class="level-cb" value="Warning"   checked/> <span style="color:var(--alert-warning)">Warning</span></label>
+      <label class="checkbox-item"><input type="checkbox" class="level-cb" value="Emergency" checked/> <span style="color:var(--alert-emergency)">Emergency</span></label>
+    </div>
+  </div>
+
+  <!-- Buttons -->
+  <div style="display:flex;gap:8px;align-items:flex-end;">
+    <button class="btn btn-primary" onclick="applyFilters()">Apply</button>
+    <button class="btn btn-secondary" onclick="resetFilters()">Reset</button>
+  </div>
+</div>
+
+<!-- ── Mini KPIs with Inline Sparklines ─────────────────────────────── -->
+<div class="mini-kpi-grid">
+  <div class="mini-kpi">
+    <div class="mini-kpi-dot" style="background:var(--accent)"></div>
+    <div class="mini-kpi-content">
+      <div class="mini-kpi-val" id="mk-total">—</div>
+      <div class="mini-kpi-label">Total Alerts</div>
+    </div>
+    <div class="kpi-sparkline" id="spark-total"></div>
+  </div>
+  <div class="mini-kpi">
+    <div class="mini-kpi-dot" style="background:var(--alert-watch)"></div>
+    <div class="mini-kpi-content">
+      <div class="mini-kpi-val" id="mk-watch" style="color:var(--alert-watch)">—</div>
+      <div class="mini-kpi-label">Watch</div>
+    </div>
+    <div class="kpi-sparkline" id="spark-watch"></div>
+  </div>
+  <div class="mini-kpi">
+    <div class="mini-kpi-dot" style="background:var(--alert-warning)"></div>
+    <div class="mini-kpi-content">
+      <div class="mini-kpi-val" id="mk-warning" style="color:var(--alert-warning)">—</div>
+      <div class="mini-kpi-label">Warning</div>
+    </div>
+    <div class="kpi-sparkline" id="spark-warning"></div>
+  </div>
+  <div class="mini-kpi">
+    <div class="mini-kpi-dot" style="background:var(--alert-emergency)"></div>
+    <div class="mini-kpi-content">
+      <div class="mini-kpi-val" id="mk-emergency" style="color:var(--alert-emergency)">—</div>
+      <div class="mini-kpi-label">Emergency</div>
+    </div>
+    <div class="kpi-sparkline" id="spark-emergency"></div>
+  </div>
+</div>
+
+<!-- ── Operations Tabs navigation ───────────────────────────────────── -->
+<div class="tab-container">
+  <button class="tab-btn active" onclick="switchTab('tab-timeline')">Mission Control Timeline</button>
+  <button class="tab-btn" onclick="switchTab('tab-heatmap')">Geographic Hotspots</button>
+  <button class="tab-btn" onclick="switchTab('tab-table')">Alert Logs</button>
+</div>
+
+<!-- ── Tab 1: Aligned Stacked Timelines ─────────────────────────────── -->
+<div id="tab-timeline" class="tab-content active">
+  <div class="card w-full mb-6">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span class="chart-icon-timeline"></span>
+        Mission Control Aligned Timelines
+      </span>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <select id="tl-city"    onchange="loadTimeline()" style="background:var(--bg-primary);border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:5px 10px;font-size:12px;height:32px;"></select>
+        <select id="tl-disease" onchange="loadTimeline()" style="background:var(--bg-primary);border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:5px 10px;font-size:12px;height:32px;"></select>
+      </div>
+    </div>
+    <div id="signals-info" style="font-size:11px;color:var(--text-2);margin: 12px 18px 0 18px;padding: 10px 14px;background:rgba(255,255,255,0.02);border-radius:6px;border:1px solid var(--border-light);display:none;"></div>
+    <div id="chart-timeline" style="min-height:500px;"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ── Tab 2: Alert Heatmap (Full-Width with Dynamic Sorting) ───────── -->
+<div id="tab-heatmap" class="tab-content">
+  <div class="card w-full mb-6">
+    <div class="card-title" style="justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span style="display:flex;align-items:center;gap:8px;">
+        <span class="chart-icon-heatmap"><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></span>
+        Geographic Alert Hotspots (Cities × Months)
+      </span>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <label style="font-size:11px;color:var(--text-2);">Disease</label>
+        <select id="hm-disease" onchange="loadHeatmap()" style="background:var(--bg-primary);border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:5px 10px;font-size:12px;height:32px;"></select>
+        
+        <label style="font-size:11px;color:var(--text-2);margin-left:10px;">Sort Cities</label>
+        <select id="hm-sort" onchange="loadHeatmap()" style="background:var(--bg-primary);border:1px solid var(--border);color:var(--text-1);border-radius:6px;padding:5px 10px;font-size:12px;height:32px;">
+          <option value="alpha">Alphabetical</option>
+          <option value="alerts">Alert Frequency</option>
+        </select>
+      </div>
+    </div>
+    <div id="chart-heatmap" style="min-height:550px;"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ── Tab 3: Detailed Alert Logs Table ─────────────────────────────── -->
+<div id="tab-table" class="tab-content">
+  <div class="card w-full">
+    <div class="table-controls">
+      <div class="table-info">Showing <strong id="tbl-showing">—</strong> of <strong id="tbl-total">—</strong> alerts</div>
+      <div style="display:flex;gap:8px;">
+        <a id="export-btn" href="/api/alerts/export" class="btn btn-success" style="text-decoration:none;">⬇ Export CSV</a>
+      </div>
+    </div>
+    <div class="table-wrapper">
+      <table>
+        <thead>
+          <tr>
+            <th>City</th><th>Disease</th><th>Week Start</th>
+            <th>IF</th><th>DBSCAN</th><th>LSTM</th>
+            <th>LSTM Prob</th><th>Score</th><th>Level</th><th>Visits</th>
+          </tr>
+        </thead>
+        <tbody id="alerts-tbody"><tr><td colspan="10"><div class="spinner"></div></td></tr></tbody>
+      </table>
+    </div>
+    <div class="pagination" id="alerts-pagination"></div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+// ─── Shared colors & plot defaults ─────────────────────────────────────
+const AC = { Normal:'#6B7280', Watch:'#3B82F6', Warning:'#F59E0B', Emergency:'#EF4444' };
+const PL = window.PLOT_LAYOUT;
+const PC = window.PLOT_CONFIG;
+
+// ─── Custom select state ────────────────────────────────────────────────
+const csState = { 'cs-city': new Set(), 'cs-disease': new Set() };
+let filtersData = {};
+let currentPage = 1;
+let tlLoading   = false;
+
+// ─── Tab Switching Desk ──────────────────────────────────────────────────
+function switchTab(tabId) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  const target = document.getElementById(tabId);
+  if (target) target.classList.add('active');
+  
+  document.querySelectorAll('.tab-btn').forEach(btn => {
+    if (btn.getAttribute('onclick').includes(tabId)) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  });
+
+  // Force Plotly to recalculate width inside parent
+  if (tabId === 'tab-timeline') {
+    Plotly.Plots.resize('chart-timeline');
+  } else if (tabId === 'tab-heatmap') {
+    Plotly.Plots.resize('chart-heatmap');
+  }
+}
+
+// ─── Fixed-position dropdown (escapes all stacking contexts) ────────────
+function positionDropdown(id) {
+  const trigger  = document.getElementById(id + '-trigger');
+  const dropdown = document.getElementById(id + '-list');
+  if (!trigger || !dropdown) return;
+  const rect = trigger.getBoundingClientRect();
+  dropdown.style.top    = (rect.bottom + 4) + 'px';
+  dropdown.style.left   = rect.left + 'px';
+  dropdown.style.width  = Math.max(220, rect.width) + 'px';
+}
+
+function toggleDropdown(id, e) {
+  if (e) e.stopPropagation();
+  const el = document.getElementById(id);
+  const isOpen = el.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.custom-select.open').forEach(cs => cs.classList.remove('open'));
+  if (!isOpen) {
+    el.classList.add('open');
+    positionDropdown(id);
+  }
+}
+
+// Close on outside click
+document.addEventListener('click', () =>
+  document.querySelectorAll('.custom-select.open').forEach(cs => cs.classList.remove('open')));
+
+// Reposition on scroll/resize
+window.addEventListener('scroll', () => {
+  document.querySelectorAll('.custom-select.open').forEach(cs => positionDropdown(cs.id));
+}, true);
+window.addEventListener('resize', () => {
+  document.querySelectorAll('.custom-select.open').forEach(cs => positionDropdown(cs.id));
+});
+
+// Country Flags Mapping
+const FLAG_MAP = {
+  'Algeria': '🇩🇿',
+  'Cameroon': '🇨🇲',
+  'DRC': '🇨🇩',
+  'Egypt': '🇪🇬',
+  'Ethiopia': '🇪🇹',
+  'Ghana': '🇬🇭',
+  'Kenya': '🇰🇪',
+  'Mali': '🇲🇱',
+  'Morocco': '🇲🇦',
+  'Mozambique': '🇲🇿',
+  'Nigeria': '🇳🇬',
+  'Senegal': '🇸🇳',
+  'South Africa': '🇿🇦',
+  'Sudan': '🇸🇩',
+  'Tanzania': '🇹🇿',
+  'Tunisia': '🇹🇳',
+  'Uganda': '🇺🇬',
+  'Zambia': '🇿🇲',
+  'Zimbabwe': '🇿🇼'
+};
+
+function getGeoFlag(city) {
+  if (!filtersData || !filtersData.geo_details || !filtersData.geo_details[city]) return '🌍';
+  const country = filtersData.geo_details[city].country;
+  return FLAG_MAP[country] || '🌍';
+}
+
+function getGeoState(city) {
+  if (!filtersData || !filtersData.geo_details || !filtersData.geo_details[city]) return '';
+  return filtersData.geo_details[city].state || '';
+}
+
+// ─── Build custom select list ───────────────────────────────────────────
+function buildCustomSelect(id, items, placeholder) {
+  const list = document.getElementById(id + '-list');
+  
+  let optionsHtml = '';
+  if (id === 'cs-city') {
+    optionsHtml = items.map(v => {
+      const flag = getGeoFlag(v);
+      const state = getGeoState(v);
+      return `<label class="cs-option">
+         <input type="checkbox" value="${v}" onchange="toggleCS('${id}','${v}',this.checked)"/>
+         <div class="cs-option-text" style="display:flex; flex-direction:column; gap:2px; padding: 4px 0;">
+           <span style="font-weight: 600; display:flex; align-items:center; gap:6px;">
+             <span style="font-size:14px; flex-shrink:0;">${flag}</span>
+             <span>${v}</span>
+           </span>
+           <span style="font-size: 10px; color: var(--text-3); font-weight: 500; margin-left: 20px;">${state}</span>
+         </div>
+       </label>`;
+    }).join('');
+  } else {
+    optionsHtml = items.map(v =>
+      `<label class="cs-option">
+         <input type="checkbox" value="${v}" onchange="toggleCS('${id}','${v}',this.checked)"/>
+         <span>${v}</span>
+       </label>`
+    ).join('');
+  }
+
+  list.innerHTML =
+    `<div class="cs-search"><input type="text" placeholder="Search…" oninput="filterOpts('${id}',this.value)"/></div>
+     <div class="cs-actions">
+       <button class="cs-act-btn" onclick="selectAllCS('${id}')">Select All</button>
+       <button class="cs-act-btn" onclick="clearCS('${id}')">Clear</button>
+     </div>` + optionsHtml;
+}
+
+// Search filtering on options
+function filterOpts(id, q) {
+  document.querySelectorAll(`#${id}-list .cs-option`).forEach(opt => {
+    opt.style.display = opt.textContent.toLowerCase().includes(q.toLowerCase()) ? '' : 'none';
+  });
+}
+function toggleCS(id, value, checked) {
+  if (checked) {
+    csState[id].add(value);
+    document.querySelectorAll(`#${id}-list .cs-option`).forEach(opt => {
+      if (opt.querySelector('input').value === value) opt.classList.add('cs-selected');
+    });
+  } else {
+    csState[id].delete(value);
+    document.querySelectorAll(`#${id}-list .cs-option`).forEach(opt => {
+      if (opt.querySelector('input').value === value) opt.classList.remove('cs-selected');
+    });
+  }
+  updateCSLabel(id);
+}
+function selectAllCS(id) {
+  document.querySelectorAll(`#${id}-list .cs-option input`).forEach(cb => {
+    cb.checked = true; csState[id].add(cb.value);
+    cb.closest('.cs-option').classList.add('cs-selected');
+  });
+  updateCSLabel(id);
+}
+function clearCS(id) {
+  document.querySelectorAll(`#${id}-list .cs-option input`).forEach(cb => {
+    cb.checked = false; cb.closest('.cs-option').classList.remove('cs-selected');
+  });
+  csState[id].clear();
+  updateCSLabel(id);
+}
+function updateCSLabel(id) {
+  const label = document.getElementById(id + '-label');
+  const n = csState[id].size;
+  const placeholders = { 'cs-city':'All Cities', 'cs-disease':'All Diseases' };
+  
+  if (n === 0) {
+    label.innerHTML = `<span>${placeholders[id]}</span>`;
+    label.style.color = 'var(--text-2)';
+  } else if (n === 1) {
+    const val = [...csState[id]][0];
+    if (id === 'cs-city') {
+      const flag = getGeoFlag(val);
+      const state = getGeoState(val);
+      label.innerHTML = `
+        <div style="display:flex; flex-direction:column; gap:1px; line-height:1.2; padding: 2px 0;">
+          <span style="font-weight: 600; display:flex; align-items:center; gap:6px; color:var(--text-1);">
+            <span style="font-size:14px; flex-shrink:0;">${flag}</span>
+            <span>${val}</span>
+          </span>
+          <span style="font-size: 10px; color: var(--text-3); font-weight: 500; padding-left: 20px;">${state}</span>
+        </div>
+      `;
+    } else {
+      label.innerHTML = `<span>${val}</span>`;
+      label.style.color = 'var(--text-1)';
+    }
+  } else {
+    label.innerHTML = `<span>${n} selected</span>`;
+    label.style.color = 'var(--accent-cyan)';
+  }
+}
+
+// ─── Draw Sparklines ─────────────────────────────────────────────────────
+function drawSparkline(containerId, data, color) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+  if (!data || data.length === 0) {
+    container.innerHTML = '';
+    return;
+  }
+  const width = 90;
+  const height = 30;
+  const max = Math.max(...data, 1);
+  const min = Math.min(...data, 0);
+  const range = max - min || 1;
+  
+  const points = data.map((val, idx) => {
+    const x = (idx / (data.length - 1)) * width;
+    const y = height - ((val - min) / range) * height;
+    return `${x.toFixed(1)},${y.toFixed(1)}`;
+  }).join(' ');
+  
+  const areaPoints = `${points} ${width},${height} 0,${height}`;
+  const fillColor = color + '1A'; // 10% opacity fill under path
+  
+  container.innerHTML = `
+    <svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="overflow:visible;">
+      <path fill="${fillColor}" d="M 0,${height} L ${points} L ${width},${height} Z" />
+      <polyline fill="none" stroke="${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" points="${points}" />
+    </svg>
+  `;
+}
+
+// ─── Load filters ────────────────────────────────────────────────────────
+async function loadFilters() {
+  try {
+    const r = await fetch('/api/alerts/filters');
+    const d = await r.json();
+    filtersData = d;
+
+    // Load city details before building select elements
+    buildCustomSelect('cs-city',    d.cities,   'All Cities');
+    buildCustomSelect('cs-disease', d.diseases, 'All Diseases');
+
+    const tlCity = document.getElementById('tl-city');
+    const tlDis  = document.getElementById('tl-disease');
+    const hmDis  = document.getElementById('hm-disease');
+
+    d.cities.forEach(c => tlCity.add(new Option(c, c)));
+    d.diseases.forEach(dis => {
+      tlDis.add(new Option(dis, dis));
+      hmDis.add(new Option(dis, dis));
+    });
+
+    // Set default timeline selects
+    if (d.cities.length)   tlCity.value = d.cities[0];
+    if (d.diseases.length) tlDis.value  = d.diseases[0];
+
+    document.getElementById('f-from').value = d.date_min;
+    document.getElementById('f-to').value   = d.date_max;
+
+    await applyFilters();
+
+  } catch(err) {
+    console.error('loadFilters error:', err);
+  }
+}
+
+// ─── Filter params ───────────────────────────────────────────────────────
+function getFilterParams() {
+  const levels   = [...document.querySelectorAll('.level-cb:checked')].map(cb => `level=${cb.value}`);
+  const cities   = [...csState['cs-city']];
+  const diseases = [...csState['cs-disease']];
+  const from = document.getElementById('f-from').value;
+  const to   = document.getElementById('f-to').value;
+  return [
+    ...cities.map(c   => `city=${encodeURIComponent(c)}`),
+    ...diseases.map(d => `disease=${encodeURIComponent(d)}`),
+    ...levels,
+    from ? `from=${from}` : '',
+    to   ? `to=${to}`     : '',
+  ].filter(Boolean).join('&');
+}
+
+async function applyFilters() {
+  currentPage = 1;
+  const qs = getFilterParams();
+
+  // Unified Filtering Sync:
+  const selectedCities = [...csState['cs-city']];
+  const selectedDiseases = [...csState['cs-disease']];
+  
+  if (selectedCities.length === 1) {
+    document.getElementById('tl-city').value = selectedCities[0];
+  }
+  if (selectedDiseases.length === 1) {
+    document.getElementById('tl-disease').value = selectedDiseases[0];
+    document.getElementById('hm-disease').value = selectedDiseases[0];
+  } else if (selectedDiseases.length > 1) {
+    document.getElementById('hm-disease').value = selectedDiseases[0];
+  } else {
+    document.getElementById('hm-disease').value = 'all';
+  }
+
+  try {
+    const r = await fetch(`/api/alerts/summary?${qs}`);
+    const d = await r.json();
+    document.getElementById('mk-total').textContent     = d.total.toLocaleString();
+    document.getElementById('mk-watch').textContent     = d.Watch.toLocaleString();
+    document.getElementById('mk-warning').textContent   = d.Warning.toLocaleString();
+    document.getElementById('mk-emergency').textContent = d.Emergency.toLocaleString();
+    
+    // Draw Sparklines
+    if (d.trends) {
+      drawSparkline('spark-total', d.trends.total, 'var(--accent)');
+      drawSparkline('spark-watch', d.trends.Watch, 'var(--alert-watch)');
+      drawSparkline('spark-warning', d.trends.Warning, 'var(--alert-warning)');
+      drawSparkline('spark-emergency', d.trends.Emergency, 'var(--alert-emergency)');
+    }
+  } catch(e) { console.error('summary error', e); }
+
+  loadTable(1, qs);
+  loadTimeline();
+  loadHeatmap();
+  document.getElementById('export-btn').href = `/api/alerts/export?${qs}`;
+}
+
+function resetFilters() {
+  clearCS('cs-city');
+  clearCS('cs-disease');
+  document.querySelectorAll('.level-cb').forEach(cb => cb.checked = true);
+  document.getElementById('f-from').value = filtersData.date_min || '';
+  document.getElementById('f-to').value   = filtersData.date_max || '';
+  applyFilters();
+}
+
+// ─── Alerts table ────────────────────────────────────────────────────────
+async function loadTable(page, qs) {
+  document.getElementById('alerts-tbody').innerHTML =
+    `<tr><td colspan="10"><div class="spinner"></div></td></tr>`;
+  try {
+    const r = await fetch(`/api/alerts/table?page=${page}&${qs}`);
+    const d = await r.json();
+    document.getElementById('tbl-showing').textContent = Math.min(d.page*50, d.total).toLocaleString();
+    document.getElementById('tbl-total').textContent   = d.total.toLocaleString();
+    renderTable(d.data);
+    renderPagination(d.page, d.pages, qs);
+  } catch(e) {
+    document.getElementById('alerts-tbody').innerHTML =
+      `<tr><td colspan="10" style="text-align:center;padding:32px;color:var(--alert-emergency);">Failed to load data</td></tr>`;
+  }
+}
+
+function renderTable(rows) {
+  const tbody = document.getElementById('alerts-tbody');
+  if (!rows || !rows.length) {
+    tbody.innerHTML = `<tr><td colspan="10">
+      <div class="no-data-state" style="min-height:140px;">
+        <div class="no-data-icon" style="font-size:34px;">📭</div>
+        <div class="no-data-title">No alerts match the current filters</div>
+        <div class="no-data-sub">Try adjusting the date range or removing some filters.</div>
+      </div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(row => {
+    const lvl = row.alert_level || 'Normal';
+    const cls = lvl !== 'Normal' ? `row-${lvl.toLowerCase()}` : '';
+    return `<tr class="${cls}">
+      <td>${row.CITY}</td>
+      <td>${row.DISEASE}</td>
+      <td>${row.WEEK_START}</td>
+      <td class="${row.IF_FLAG     ? 'flag-1' : 'flag-0'}">${row.IF_FLAG     ? '✅' : '—'}</td>
+      <td class="${row.DBSCAN_FLAG ? 'flag-1' : 'flag-0'}">${row.DBSCAN_FLAG ? '✅' : '—'}</td>
+      <td class="${row.lstm_pred   ? 'flag-1' : 'flag-0'}">${row.lstm_pred   ? '✅' : '—'}</td>
+      <td>${parseFloat(row.lstm_prob || 0).toFixed(3)}</td>
+      <td class="score-${row.fusion_score}">${row.fusion_score}</td>
+      <td><span class="badge badge-${lvl.toLowerCase()}">${lvl}</span></td>
+      <td>${row.total_visits || '—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function renderPagination(page, pages, qs) {
+  const pg = document.getElementById('alerts-pagination');
+  let html = `<span class="page-info">Page ${page} of ${pages}</span>`;
+  html += `<button class="page-btn" onclick="loadTable(${page-1},'${qs}')" ${page<=1?'disabled':''}>‹</button>`;
+  const s = Math.max(1, page-2), e = Math.min(pages, page+2);
+  for (let i = s; i <= e; i++)
+    html += `<button class="page-btn ${i===page?'active':''}" onclick="loadTable(${i},'${qs}')">${i}</button>`;
+  html += `<button class="page-btn" onclick="loadTable(${page+1},'${qs}')" ${page>=pages?'disabled':''}>›</button>`;
+  pg.innerHTML = html;
+  currentPage = page;
+}
+
+// ─── Stacked Timelines (Fusion Score & Model Signals) ───────────────────
+async function loadTimeline() {
+  if (tlLoading) return;
+  const city    = document.getElementById('tl-city').value;
+  const disease = document.getElementById('tl-disease').value;
+
+  const el = document.getElementById('chart-timeline');
+  if (!city || !disease) {
+    showNoData('chart-timeline', 'Select city and disease above');
+    return;
+  }
+
+  tlLoading = true;
+  el.innerHTML = '<div class="spinner"></div>';
+  document.getElementById('signals-info').style.display = 'none';
+
+  try {
+    const resp = await fetch(`/api/alerts/timeline?city=${encodeURIComponent(city)}&disease=${encodeURIComponent(disease)}`);
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const d = await resp.json();
+
+    if (!d.weeks || d.weeks.length === 0) {
+      showNoData('chart-timeline', `No data for ${city} / ${disease}`,
+        'This city–disease combination has no weekly alert records in the dataset.');
+      tlLoading = false;
+      return;
+    }
+
+    el.innerHTML = '';
+
+    // Calculate outbreak annotations & shapes
+    const shapes = [], annots = [];
+    if (d.outbreak_start) {
+      shapes.push({
+        type: 'line', x0: d.outbreak_start, x1: d.outbreak_start, y0: 0, y1: 5.5,
+        line: { color: '#EF4444', dash: 'dash', width: 1.8 },
+        xref: 'x2', yref: 'y'
+      });
+      annots.push({
+        x: d.outbreak_start, y: 5.6, text: 'Declared Outbreak', showarrow: false,
+        font: { color: '#EF4444', size: 9 }, xanchor: 'left', xshift: 5,
+        xref: 'x2', yref: 'y'
+      });
+    }
+    // Threshold guide lines (Watch at 1, Warning at 3)
+    shapes.push(
+      { type:'line', x0:d.weeks[0], x1:d.weeks[d.weeks.length-1], y0:1, y1:1,
+        line:{ color:'rgba(59,130,246,0.35)', dash:'dot', width:1.2 }, xref: 'x2', yref: 'y' },
+      { type:'line', x0:d.weeks[0], x1:d.weeks[d.weeks.length-1], y0:3, y1:3,
+        line:{ color:'rgba(245,158,11,0.35)', dash:'dot', width:1.2 }, xref: 'x2', yref: 'y' }
+    );
+
+    // Render Contiguous True Outbreaks as soft red background highlights
+    let startWk = null;
+    for (let i = 0; i < d.weeks.length; i++) {
+      if (d.true_outbreak[i] === 1) {
+        if (startWk === null) startWk = d.weeks[i];
+      } else {
+        if (startWk !== null) {
+          shapes.push({
+            type: 'rect', xref: 'x2', yref: 'paper',
+            x0: startWk, x1: d.weeks[i-1],
+            y0: 0, y1: 1,
+            fillcolor: 'rgba(239, 68, 68, 0.07)',
+            line: { width: 0 },
+            layer: 'below'
+          });
+          startWk = null;
+        }
+      }
+    }
+    if (startWk !== null) {
+      shapes.push({
+        type: 'rect', xref: 'x2', yref: 'paper',
+        x0: startWk, x1: d.weeks[d.weeks.length-1],
+        y0: 0, y1: 1,
+        fillcolor: 'rgba(239, 68, 68, 0.07)',
+        line: { width: 0 },
+        layer: 'below'
+      });
+    }
+
+    const scoreColors = d.fusion_score.map(s =>
+      s >= 4 ? '#EF4444' : s === 3 ? '#F59E0B' : s >= 1 ? '#3B82F6' : '#6B7280');
+
+    // Group model flags into horizontal status matrix/lanes
+    const ifWeeks = [], ifY = [];
+    const dbWeeks = [], dbY = [];
+    const lstmWeeks = [], lstmY = [];
+    
+    for (let i = 0; i < d.weeks.length; i++) {
+      if (d.IF_FLAG[i] === 1) {
+        ifWeeks.push(d.weeks[i]);
+        ifY.push('Isolation Forest');
+      }
+      if (d.DBSCAN_FLAG[i] === 1) {
+        dbWeeks.push(d.weeks[i]);
+        dbY.push('DBSCAN');
+      }
+      if (d.lstm_pred[i] === 1) {
+        lstmWeeks.push(d.weeks[i]);
+        lstmY.push('LSTM');
+      }
+    }
+
+    // Aligned subplot layout
+    Plotly.newPlot(el, [
+      // Row 1: Fusion Score filled timeline
+      {
+        x: d.weeks, y: d.fusion_score, type: 'scatter', mode: 'lines+markers', name: 'Fusion Score',
+        line: { color: '#6C63FF', width: 2.2 },
+        marker: { size: 5, color: scoreColors, line: { color: 'rgba(0,0,0,0)', width: 0 } },
+        fill: 'tozeroy', fillcolor: 'rgba(108,99,255,0.06)',
+        hovertemplate: '<b>%{x}</b><br>Score: %{y}<extra></extra>',
+        xaxis: 'x', yaxis: 'y'
+      },
+      // Row 2: Isolation Forest active indicators
+      {
+        x: ifWeeks, y: ifY, type: 'scatter', mode: 'markers', name: 'IF Active',
+        marker: { symbol: 'square', size: 9, color: 'rgba(108,99,255,0.85)' },
+        hovertemplate: 'IF Active: %{x}<extra></extra>',
+        xaxis: 'x2', yaxis: 'y3'
+      },
+      // Row 2: DBSCAN active indicators
+      {
+        x: dbWeeks, y: dbY, type: 'scatter', mode: 'markers', name: 'DBSCAN Active',
+        marker: { symbol: 'square', size: 9, color: 'rgba(0,212,255,0.85)' },
+        hovertemplate: 'DBSCAN Active: %{x}<extra></extra>',
+        xaxis: 'x2', yaxis: 'y3'
+      },
+      // Row 2: LSTM active indicators
+      {
+        x: lstmWeeks, y: lstmY, type: 'scatter', mode: 'markers', name: 'LSTM Active',
+        marker: { symbol: 'square', size: 9, color: 'rgba(245,158,11,0.85)' },
+        hovertemplate: 'LSTM Active: %{x}<extra></extra>',
+        xaxis: 'x2', yaxis: 'y3'
+      }
+    ], {
+      ...PL,
+      grid: { rows: 2, columns: 1, pattern: 'independent' },
+      
+      // Top Subplot Axes
+      yaxis: {
+        ...PL.yaxis,
+        title: { text: 'Fusion Score', font: { color: '#8B95A7', size: 11 } },
+        domain: [0.50, 1.0], range: [-0.2, 5.5]
+      },
+      xaxis: {
+        ...PL.xaxis, showticklabels: false, matches: 'x2'
+      },
+      
+      // Bottom Subplot Axes (Matrix lanes)
+      yaxis3: {
+        ...PL.yaxis,
+        type: 'category',
+        categoryorder: 'array',
+        categoryarray: ['Isolation Forest', 'DBSCAN', 'LSTM'],
+        domain: [0.0, 0.38],
+        showgrid: true,
+        gridcolor: 'rgba(255,255,255,0.035)'
+      },
+      xaxis2: {
+        ...PL.xaxis, anchor: 'y3', tickangle: -35
+      },
+      
+      legend: { orientation: 'h', y: -0.22, bgcolor: 'rgba(0,0,0,0)', font: { color: '#8B95A7' } },
+      margin: { t: 30, r: 24, b: 64, l: 120 }, // Left margin expanded to fit lane labels
+      shapes,
+      annotations: annots
+    }, PC);
+
+    // Summary metadata cards
+    const ifSum     = d.IF_FLAG.reduce((a,v) => a + v, 0);
+    const dbSum     = d.DBSCAN_FLAG.reduce((a,v) => a + v, 0);
+    const lstmSum   = d.lstm_pred.reduce((a,v) => a + v, 0);
+    const totalWks  = d.weeks.length;
+
+    const infoEl = document.getElementById('signals-info');
+    infoEl.style.display = 'block';
+    infoEl.innerHTML = `Historical Signal Metrics: &nbsp;•&nbsp; IF: <strong>${ifSum}/${totalWks}</strong> active &nbsp;|&nbsp;
+      DBSCAN: <strong>${dbSum}/${totalWks}</strong> active &nbsp;|&nbsp;
+      LSTM: <strong>${lstmSum}/${totalWks}</strong> predicted outbreaks. &nbsp;&nbsp;(Select individual weeks on the graph to drill down)`;
+
+  } catch(err) {
+    console.error('loadTimeline error:', err);
+    showError('chart-timeline', err.message);
+  } finally {
+    tlLoading = false;
+  }
+}
+
+// ─── Heatmap ──────────────────────────────────────────────────────────────
+let hmLoading = false;
+async function loadHeatmap() {
+  if (hmLoading) return;
+  const elId = 'chart-heatmap';
+  const el   = document.getElementById(elId);
+  const dis  = document.getElementById('hm-disease').value || 'all';
+  el.innerHTML = '<div class="spinner"></div>';
+  hmLoading = true;
+  try {
+    const r = await fetch(`/api/alerts/heatmap?disease=${encodeURIComponent(dis)}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+
+    if (!d.cities || d.cities.length === 0 || !d.months || d.months.length === 0) {
+      showNoData(elId, 'No Heatmap Data',
+        'No alert records found for the selected disease.');
+      return;
+    }
+
+    el.innerHTML = '';
+    
+    // Sort Heatmap Cities Purely Client-Side
+    let cities = d.cities;
+    let z = d.z;
+    const sortVal = document.getElementById('hm-sort').value;
+    
+    if (sortVal === 'alerts') {
+      const paired = cities.map((city, idx) => {
+        const row = z[idx];
+        const alertSum = row.reduce((sum, val) => sum + (val > 0 ? val : 0), 0);
+        return { city, row, alertSum };
+      });
+      paired.sort((a, b) => b.alertSum - a.alertSum);
+      cities = paired.map(p => p.city);
+      z = paired.map(p => p.row);
+    }
+
+    const alertLabels = ['None','Watch','Warning','Emergency'];
+    Plotly.newPlot(el, [{
+      type:       'heatmap',
+      x:          d.months,
+      y:          cities,
+      z:          z,
+      colorscale: [[0,'#0D1117'],[0.05,'#111827'],[0.34,'#1e3a5f'],[0.67,'#92400e'],[1,'#7f1d1d']],
+      zmin: 0, zmax: 3,
+      showscale: true,
+      colorbar: {
+        thickness: 12, len: 0.8,
+        tickvals: [0,1,2,3],
+        ticktext: alertLabels,
+        tickfont: { color:'#8B95A7', size:9 },
+        outlinecolor: 'rgba(0,0,0,0)',
+      },
+      hovertemplate: '<b>%{y}</b><br>%{x}<br>Level: %{z}<extra></extra>',
+    }], {
+      ...PL,
+      margin:{ t:12, r:60, b:80, l:130 },
+      xaxis:{ ...PL.xaxis, tickangle:-45, tickfont:{ size:9 } },
+      yaxis:{ ...PL.yaxis, automargin:true, tickfont:{ size:10 } },
+    }, PC);
+  } catch(e) {
+    console.error('loadHeatmap error:', e);
+    showError(elId, e.message);
+  } finally {
+    hmLoading = false;
+  }
+}
+
+// ─── Bootstrap ─────────────────────────────────────────────────────────────
+loadFilters();
+</script>
+{% endblock %}

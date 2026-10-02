@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Login — EpiGuard Africa</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <style>
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      background: #0B0F17;
+      margin: 0;
+      font-family: 'Inter', sans-serif;
+    }
+    .login-container {
+      width: 100%;
+      max-width: 420px;
+      padding: 20px;
+    }
+    .login-card {
+      background: rgba(22, 27, 34, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 12px;
+      padding: 40px 30px;
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      backdrop-filter: blur(8px);
+    }
+    .login-logo {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin-bottom: 30px;
+    }
+    .login-logo h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: #EEF2FF;
+      margin: 10px 0 0 0;
+    }
+    .login-logo span {
+      color: #6C63FF;
+    }
+    .login-logo p {
+      font-size: 12px;
+      color: #8B95A7;
+      margin: 4px 0 0 0;
+    }
+    .form-group {
+      margin-bottom: 20px;
+    }
+    .form-group label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: #8B95A7;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-control {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 14px;
+      color: #EEF2FF;
+      background: rgba(13, 17, 23, 0.8);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      box-sizing: border-box;
+      transition: all 0.3s;
+    }
+    .form-control:focus {
+      outline: none;
+      border-color: #6C63FF;
+      box-shadow: 0 0 0 3px rgba(108, 99, 255, 0.15);
+    }
+    .btn-login {
+      width: 100%;
+      padding: 12px;
+      background: #6C63FF;
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      margin-top: 10px;
+    }
+    .btn-login:hover {
+      background: #5B52E0;
+    }
+    .btn-login:active {
+      transform: scale(0.98);
+    }
+    .flash-messages {
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
+    .flash-alert {
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: rgba(239, 68, 68, 0.15);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #FCA5A5;
+      margin-bottom: 8px;
+    }
+    .login-footer {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 11px;
+      color: #5A6578;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-logo">
+        <h1>EpiGuard<span>Africa</span></h1>
+        <p>Outbreak Intelligence Portal</p>
+      </div>
+      
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          <div class="flash-messages">
+            {% for category, message in messages %}
+              <div class="flash-alert">{{ message }}</div>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endwith %}
+      
+      <form action="{{ url_for('auth.login') }}" method="POST">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+        <div class="form-group">
+          <label for="username">Username</label>
+          <input type="text" id="username" name="username" class="form-control" placeholder="Enter username..." required autofocus/>
+        </div>
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" name="password" class="form-control" placeholder="Enter password..." required/>
+        </div>
+        <button type="submit" class="btn-login">Sign In</button>
+      </form>
+    </div>
+    <div class="login-footer">
+      Secured Connection &bull; &copy; 2026 EpiGuard Intelligence
+    </div>
+  </div>
+</body>
+</html>

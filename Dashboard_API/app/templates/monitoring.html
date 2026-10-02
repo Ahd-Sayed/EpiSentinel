@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+{% block title %}System Monitoring — EpiSentinel Africa{% endblock %}
+{% block page_title %}System Monitoring &amp; Audit Logs{% endblock %}
+{% block page_subtitle %}Real-time server statistics and administrative action logs{% endblock %}
+
+{% block content %}
+<div class="row">
+  <!-- System Resource Stats Cards -->
+  <div class="col-md-3 mb-4">
+    <div class="card h-100 text-center">
+      <div class="card-title justify-content-center">🖥️ CPU Utilization</div>
+      <div class="card-body">
+        <h1 style="font-size: 40px; font-weight: 800; color: #6C63FF; margin-top: 10px;" id="cpu-stat">—%</h1>
+        <div class="progress mt-3" style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+          <div class="progress-bar" id="cpu-progress" style="width: 0%; background: #6C63FF;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-4">
+    <div class="card h-100 text-center">
+      <div class="card-title justify-content-center">💾 Memory Usage</div>
+      <div class="card-body">
+        <h1 style="font-size: 40px; font-weight: 800; color: #00D4FF; margin-top: 10px;" id="ram-stat">—%</h1>
+        <div class="progress mt-3" style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+          <div class="progress-bar" id="ram-progress" style="width: 0%; background: #00D4FF;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-4">
+    <div class="card h-100 text-center">
+      <div class="card-title justify-content-center">📂 Disk Storage</div>
+      <div class="card-body">
+        <h1 style="font-size: 40px; font-weight: 800; color: #F59E0B; margin-top: 10px;" id="disk-stat">—%</h1>
+        <div class="progress mt-3" style="height: 6px; background: rgba(255,255,255,0.05); border-radius: 4px;">
+          <div class="progress-bar" id="disk-progress" style="width: 0%; background: #F59E0B;"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-md-3 mb-4">
+    <div class="card h-100 text-center">
+      <div class="card-title justify-content-center">🗄️ Database Size</div>
+      <div class="card-body">
+        <h1 style="font-size: 40px; font-weight: 800; color: #10B981; margin-top: 10px;" id="db-stat">— MB</h1>
+        <p class="text-muted" style="font-size: 11px; margin-top: 10px;">SQLite Engine</p>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <!-- Queue Status and Pipeline Run stats -->
+  <div class="col-md-4 mb-4">
+    <div class="card h-100">
+      <div class="card-title">⚙️ Pipeline Job Queue</div>
+      <div class="card-body" style="padding: 15px 0;">
+        <ul class="list-group list-group-flush" style="font-size: 13px;">
+          <li class="list-group-item d-flex justify-content-between align-items-center" style="background: transparent; border-color: rgba(255,255,255,0.05); color: #EEF2FF;">
+            Running Workers <span class="badge bg-primary" id="jobs-running">0</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center" style="background: transparent; border-color: rgba(255,255,255,0.05); color: #EEF2FF;">
+            Pending Jobs <span class="badge bg-secondary" id="jobs-queued">0</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center" style="background: transparent; border-color: rgba(255,255,255,0.05); color: #EEF2FF;">
+            Completed Jobs <span class="badge bg-success" id="jobs-completed">0</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center" style="background: transparent; border-color: rgba(255,255,255,0.05); color: #EEF2FF;">
+            Failed Executions <span class="badge bg-danger" id="jobs-failed">0</span>
+          </li>
+          <li class="list-group-item d-flex justify-content-between align-items-center" style="background: transparent; border-color: rgba(255,255,255,0.05); color: #EEF2FF;">
+            Avg Execution Time <span class="badge bg-warning text-dark" id="jobs-avg-time">0.0s</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- Administrative Audit Log Dashboard -->
+  <div class="col-md-8 mb-4">
+    <div class="card h-100">
+      <div class="card-title" style="justify-content: space-between; align-items: center;">
+        <span>📜 System Audit Trail</span>
+        {% if current_user.role == "Admin" %}
+        <input type="text" id="audit-search" oninput="loadAuditLogs()" placeholder="Search user or action..." style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; padding: 4px 10px; font-size: 11px; color: #EEF2FF; width: 180px;" />
+        {% endif %}
+      </div>
+      <div class="card-body" style="padding: 10px 0;">
+        {% if current_user.role != "Admin" %}
+        <div class="text-center text-muted" style="padding: 40px;">
+          🔒 Access Restricted. Only Admin role can view the system audit trail.
+        </div>
+        {% else %}
+        <div class="table-responsive" style="max-height: 380px; overflow-y: auto;">
+          <table class="table" style="font-size: 11px; color: #EEF2FF; vertical-align: middle;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: #8B95A7;">
+                <th style="padding: 10px 16px;">User</th>
+                <th>Action</th>
+                <th>IP Address</th>
+                <th>Time</th>
+              </tr>
+            </thead>
+            <tbody id="audit-tbody">
+              <tr>
+                <td colspan="4" class="text-center py-4">
+                  <div class="spinner"></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3 px-3" style="font-size: 11px; color: #8B95A7;">
+          <span id="audit-pages-indicator">Page 1 of 1</span>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-outline-secondary" onclick="prevAuditPage()" id="prev-audit-btn" disabled>&larr; Prev</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="nextAuditPage()" id="next-audit-btn" disabled>Next &rarr;</button>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  let auditPage = 1;
+  let auditPages = 1;
+
+  async function loadSystemStats() {
+    try {
+      const r = await fetch('/api/system/status');
+      const d = await r.json();
+      if (d.success && d.data) {
+        const sys = d.data.system;
+        const jobs = d.data.jobs;
+        
+        // Update stats
+        document.getElementById('cpu-stat').textContent = sys.cpu_usage_pct + '%';
+        document.getElementById('cpu-progress').style.width = sys.cpu_usage_pct + '%';
+        
+        document.getElementById('ram-stat').textContent = sys.memory_usage_pct + '%';
+        document.getElementById('ram-progress').style.width = sys.memory_usage_pct + '%';
+        
+        document.getElementById('disk-stat').textContent = sys.disk_usage_pct + '%';
+        document.getElementById('disk-progress').style.width = sys.disk_usage_pct + '%';
+        
+        document.getElementById('db-stat').textContent = sys.db_size_mb + ' MB';
+        
+        // Update jobs
+        document.getElementById('jobs-running').textContent = jobs.running;
+        document.getElementById('jobs-queued').textContent = jobs.queued;
+        document.getElementById('jobs-completed').textContent = jobs.completed;
+        document.getElementById('jobs-failed').textContent = jobs.failed;
+        document.getElementById('jobs-avg-time').textContent = jobs.average_runtime_seconds + 's';
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  async function loadAuditLogs() {
+    const searchEl = document.getElementById('audit-search');
+    if (!searchEl) return; // not admin
+    const search = searchEl.value;
+    
+    try {
+      const r = await fetch(`/api/system/audit-logs?page=${auditPage}&search=${encodeURIComponent(search)}`);
+      const d = await r.json();
+      const tbody = document.getElementById('audit-tbody');
+      
+      if (d.success && d.data) {
+        auditPages = d.pages;
+        document.getElementById('audit-pages-indicator').textContent = `Page ${auditPage} of ${auditPages}`;
+        
+        document.getElementById('prev-audit-btn').disabled = auditPage <= 1;
+        document.getElementById('next-audit-btn').disabled = auditPage >= auditPages;
+        
+        if (d.data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="4" class="text-center text-muted" style="padding: 20px;">No audit logs found</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = d.data.map(log => `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+            <td style="padding: 10px 16px; font-weight: 700; color: #EEF2FF;">${log.user}</td>
+            <td>${log.action}</td>
+            <td class="text-muted">${log.ip_address}</td>
+            <td class="text-muted">${log.created_at}</td>
+          </tr>
+        `).join('');
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  function prevAuditPage() {
+    if (auditPage > 1) {
+      auditPage--;
+      loadAuditLogs();
+    }
+  }
+
+  function nextAuditPage() {
+    if (auditPage < auditPages) {
+      auditPage++;
+      loadAuditLogs();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadSystemStats();
+    loadAuditLogs();
+    // Poll stats every 3 seconds
+    setInterval(loadSystemStats, 3000);
+  });
+</script>
+{% endblock %}

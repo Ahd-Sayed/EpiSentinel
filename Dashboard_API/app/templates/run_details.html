@@ -1,0 +1,433 @@
+{% extends "base.html" %}
+{% block title %}Run #{{ run_id }} Details — EpiSentinel Africa{% endblock %}
+{% block page_title %}Prediction Run Details{% endblock %}
+{% block page_subtitle %}Full analytics, explainability, and export tools for pipeline execution #{{ run_id }}{% endblock %}
+
+{% block content %}
+<style>
+  .alert-badge { padding: 3px 9px; border-radius: 20px; font-size: 10px; font-weight: 700; letter-spacing: 0.5px; }
+  .alert-badge.Emergency { background: rgba(239,68,68,0.15); color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3); }
+  .alert-badge.Warning   { background: rgba(245,158,11,0.15); color: #FDE047; border: 1px solid rgba(245,158,11,0.3); }
+  .alert-badge.Watch     { background: rgba(59,130,246,0.15);  color: #93C5FD; border: 1px solid rgba(59,130,246,0.3);  }
+  .alert-badge.Normal    { background: rgba(107,114,128,0.15); color: #D1D5DB; border: 1px solid rgba(107,114,128,0.3); }
+</style>
+
+<!-- KPI Cards -->
+<div class="row mb-4" id="kpi-cards"></div>
+
+<!-- Quality Scores -->
+<div class="row mb-4" id="quality-row" style="display:none">
+  <div class="col-md-3 mb-3"><div class="card text-center"><div class="card-title justify-content-center">🎯 Quality Score</div><div class="card-body"><h2 style="color:#6C63FF;font-weight:800;font-size:36px;" id="q-overall">—</h2><div class="progress mt-2" style="height:5px;background:rgba(255,255,255,0.05);"><div class="progress-bar" id="q-bar-overall" style="width:0%;background:#6C63FF;"></div></div></div></div></div>
+  <div class="col-md-3 mb-3"><div class="card text-center"><div class="card-title justify-content-center">📊 Completeness</div><div class="card-body"><h2 style="color:#10B981;font-weight:800;font-size:36px;" id="q-completeness">—</h2><div class="progress mt-2" style="height:5px;background:rgba(255,255,255,0.05);"><div class="progress-bar" id="q-bar-comp" style="width:0%;background:#10B981;"></div></div></div></div></div>
+  <div class="col-md-3 mb-3"><div class="card text-center"><div class="card-title justify-content-center">📅 Consistency</div><div class="card-body"><h2 style="color:#F59E0B;font-weight:800;font-size:36px;" id="q-consistency">—</h2><div class="progress mt-2" style="height:5px;background:rgba(255,255,255,0.05);"><div class="progress-bar" id="q-bar-cons" style="width:0%;background:#F59E0B;"></div></div></div></div></div>
+  <div class="col-md-3 mb-3"><div class="card text-center"><div class="card-title justify-content-center">🌍 Coverage</div><div class="card-body"><h2 style="color:#00D4FF;font-weight:800;font-size:36px;" id="q-coverage">—</h2><div class="progress mt-2" style="height:5px;background:rgba(255,255,255,0.05);"><div class="progress-bar" id="q-bar-cov" style="width:0%;background:#00D4FF;"></div></div></div></div></div>
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+  <div class="col-md-4 mb-3"><div class="card h-100 hover-lift"><div class="card-title">📊 Alert Distribution</div><div id="chart-dist" style="min-height:250px;"><div class="spinner"></div></div></div></div>
+  <div class="col-md-4 mb-3"><div class="card h-100 hover-lift"><div class="card-title">🦠 Disease Breakdown</div><div id="chart-disease" style="min-height:250px;"><div class="spinner"></div></div></div></div>
+  <div class="col-md-4 mb-3"><div class="card h-100 hover-lift"><div class="card-title">📅 Weekly Timeline</div><div id="chart-timeline" style="min-height:250px;"><div class="spinner"></div></div></div></div>
+</div>
+
+<!-- Synchronized Timeline Explorer -->
+<div class="card mb-4">
+  <div class="card-title" style="justify-content:space-between; flex-wrap:wrap; gap:10px;">
+    <span>📈 Synchronized Prediction Timeline Explorer</span>
+    <div style="display:flex; gap:8px; flex-wrap:wrap;">
+      <select id="tl-city" onchange="updateTimeline()" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#EEF2FF; font-size:11px; padding:4px 10px; height:30px;"><option value="">All Cities</option></select>
+      <select id="tl-disease" onchange="updateTimeline()" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#EEF2FF; font-size:11px; padding:4px 10px; height:30px;"><option value="">All Diseases</option></select>
+    </div>
+  </div>
+  <div style="padding:8px 16px; font-size:10px; color:#8B95A7; border-bottom:1px solid rgba(255,255,255,0.05);">
+    All lanes share one X-axis. Use box-select or pinch to zoom; click &amp; drag to pan. Hover for crosshair sync.
+  </div>
+  <div id="chart-timeline-sync" style="min-height:400px; padding:8px;"><div class="spinner" style="margin:80px auto;"></div></div>
+</div>
+
+<!-- Prediction Explorer Table -->
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+        <span>🔬 Prediction Explorer — Click row to open XAI Drawer</span>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <input id="explorer-search" type="text" oninput="reloadExplorer()" placeholder="Search city, disease…" style="background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.1); border-radius:6px; padding:5px 10px; font-size:11px; color:#EEF2FF; width:160px;">
+          <select id="explorer-alert-filter" onchange="reloadExplorer()" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); border-radius:6px; color:#EEF2FF; font-size:11px; padding:5px 10px; height:32px;">
+            <option value="">All Levels</option>
+            <option value="Emergency">Emergency</option>
+            <option value="Warning">Warning</option>
+            <option value="Watch">Watch</option>
+            <option value="Normal">Normal</option>
+          </select>
+          <div class="dropdown">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" style="font-size:11px;" data-bs-toggle="dropdown">📥 Export</button>
+            <ul class="dropdown-menu dropdown-menu-dark" style="font-size:11px;">
+              <li><a class="dropdown-item" href="/api/download/{{ run_id }}/csv">CSV</a></li>
+              <li><a class="dropdown-item" href="/api/download/{{ run_id }}/xlsx">Excel</a></li>
+              <li><a class="dropdown-item" href="/api/download/{{ run_id }}/pdf">PDF Report</a></li>
+              <li><a class="dropdown-item" href="/api/download/{{ run_id }}/json">JSON</a></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="card-body" style="padding:0;">
+        <div class="table-responsive">
+          <table class="table responsive-table" style="font-size:12px; color:#EEF2FF; vertical-align:middle; margin:0;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.08); font-size:10px; color:#8B95A7; text-transform:uppercase;">
+                <th style="padding:12px 16px;">City</th>
+                <th>Country</th>
+                <th>Disease</th>
+                <th>Week</th>
+                <th style="text-align:center;">IF</th>
+                <th style="text-align:center;">DBSCAN</th>
+                <th style="text-align:center;">LSTM %</th>
+                <th style="text-align:center;">Fusion</th>
+                <th style="text-align:center;">Alert</th>
+                <th style="text-align:right; padding-right:16px;">Explain</th>
+              </tr>
+            </thead>
+            <tbody id="explorer-tbody">
+              <tr><td colspan="10" class="text-center py-4"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center p-3" style="font-size:11px; color:#8B95A7; border-top:1px solid rgba(255,255,255,0.05);">
+          <span id="explorer-pagination-info">—</span>
+          <div style="display:flex; gap:6px;">
+            <button class="btn btn-sm btn-outline-secondary" onclick="explorerPrev()" id="explorer-prev-btn" disabled>&larr;</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="explorerNext()" id="explorer-next-btn" disabled>Next &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Warnings -->
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-title">⚠️ Pipeline Warnings Log</div>
+      <div class="card-body" style="padding:10px 0;" id="warnings-list-body">
+        <div class="text-center py-4"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+<script>
+  const RUN_ID = {{ run_id }};
+  let explorerPage = 1;
+  let explorerPages = 1;
+  let allDetails = [];
+
+  // ─── Plotly theme ───────────────────────────────────────────────
+  const PLOTLY_LAYOUT = {
+    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+    font: { color: '#8B95A7', family: 'Inter, sans-serif', size: 11 },
+    margin: { t: 20, b: 40, l: 40, r: 20 },
+    xaxis: { gridcolor: 'rgba(255,255,255,0.06)', linecolor: 'rgba(255,255,255,0.06)' },
+    yaxis: { gridcolor: 'rgba(255,255,255,0.06)', linecolor: 'rgba(255,255,255,0.06)' },
+    showlegend: true,
+    legend: { bgcolor: 'transparent', font: { color: '#8B95A7', size: 10 } }
+  };
+
+  // ─── Level colors ────────────────────────────────────────────────
+  const LEVEL_COLORS = {
+    Emergency: '#EF4444', Warning: '#F59E0B', Watch: '#3B82F6', Normal: '#6B7280'
+  };
+
+  // ─── Load run summary ────────────────────────────────────────────
+  async function loadRunSummary() {
+    try {
+      const r = await fetch(`/api/run/${RUN_ID}`);
+      const d = await r.json();
+      if (!d.success) return;
+
+      const upload = d.upload;
+      const pred   = d.prediction;
+
+      // Build KPI cards
+      const kpiData = [
+        { label: 'Total Alerts', value: pred ? pred.total_alerts : 0, color: '#6C63FF', icon: '🔔' },
+        { label: 'Emergencies',  value: pred ? pred.emergency_count : 0, color: '#EF4444', icon: '🚨' },
+        { label: 'Rows Processed', value: (upload.rows || 0).toLocaleString(), color: '#10B981', icon: '📋' },
+        { label: 'Exec Duration', value: upload.processing_time ? upload.processing_time + 's' : '—', color: '#F59E0B', icon: '⏱️' },
+        { label: 'Cities', value: upload.unique_cities, color: '#00D4FF', icon: '🌆' },
+        { label: 'Diseases', value: upload.unique_diseases, color: '#A78BFA', icon: '🦠' },
+        { label: 'Warnings', value: upload.warnings_count, color: '#F59E0B', icon: '⚠️' },
+        { label: 'Quality Score', value: upload.quality_score ? upload.quality_score.toFixed(1) + '%' : '—', color: '#6C63FF', icon: '🎯' }
+      ];
+
+      document.getElementById('kpi-cards').innerHTML = kpiData.map(k => `
+        <div class="col-md-3 col-sm-6 mb-3">
+          <div class="card text-center">
+            <div style="font-size: 24px; padding-top: 12px;">${k.icon}</div>
+            <div style="font-size: 28px; font-weight: 800; color: ${k.color}; padding: 8px 0;">${k.value}</div>
+            <div style="font-size: 11px; color: #8B95A7; padding-bottom: 12px;">${k.label}</div>
+          </div>
+        </div>
+      `).join('');
+
+      // Show quality scores
+      if (upload.quality_score) {
+        document.getElementById('quality-row').style.display = 'flex';
+        const scores = [
+          ['q-overall', 'q-bar-overall', upload.quality_score],
+          ['q-completeness', 'q-bar-comp', upload.completeness_score],
+          ['q-consistency', 'q-bar-cons', upload.consistency_score],
+          ['q-coverage', 'q-bar-cov', upload.coverage_score]
+        ];
+        scores.forEach(([elId, barId, val]) => {
+          const v = val ? val.toFixed(1) : 0;
+          document.getElementById(elId).textContent = v + '%';
+          document.getElementById(barId).style.width = v + '%';
+        });
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  // ─── Load Analytics Charts ───────────────────────────────────────
+  async function loadCharts() {
+    try {
+      const r = await fetch(`/api/run/${RUN_ID}/analytics`);
+      const d = await r.json();
+      if (!d.success) return;
+
+      // Alert distribution donut
+      Plotly.newPlot('chart-dist', [{
+        type: 'pie', hole: 0.55,
+        labels: Object.keys(d.distribution),
+        values: Object.values(d.distribution),
+        marker: { colors: ['#EF4444','#F59E0B','#3B82F6','#6B7280'] },
+        textfont: { color: '#EEF2FF', size: 10 },
+        textinfo: 'percent+label'
+      }], { ...PLOTLY_LAYOUT, margin: { t: 10, b: 10, l: 10, r: 10 } }, { responsive: true, displayModeBar: false });
+
+      // Disease bar chart
+      if (d.diseases && d.diseases.length > 0) {
+        const top = d.diseases.sort((a,b)=>b.count-a.count).slice(0,8);
+        Plotly.newPlot('chart-disease', [{
+          type: 'bar', orientation: 'h',
+          y: top.map(x=>x.name), x: top.map(x=>x.count),
+          marker: { color: '#6C63FF' }
+        }], { ...PLOTLY_LAYOUT, xaxis: { ...PLOTLY_LAYOUT.xaxis }, yaxis: { ...PLOTLY_LAYOUT.yaxis, automargin: true } }, { responsive: true, displayModeBar: false });
+      }
+
+      // Weekly timeline
+      if (d.timeline && d.timeline.length > 0) {
+        Plotly.newPlot('chart-timeline', [{
+          type: 'scatter', mode: 'lines+markers',
+          x: d.timeline.map(x=>x.week), y: d.timeline.map(x=>x.count),
+          fill: 'tozeroy', fillcolor: 'rgba(108,99,255,0.1)',
+          line: { color: '#6C63FF', width: 2 },
+          marker: { color: '#6C63FF', size: 4 }
+        }], { ...PLOTLY_LAYOUT }, { responsive: true, displayModeBar: false });
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  // ─── Load Details Table ──────────────────────────────────────────
+  async function loadAllDetails() {
+    try {
+      const r = await fetch(`/api/run/${RUN_ID}/details`);
+      const d = await r.json();
+      if (d.success) {
+        allDetails = d.data;
+        renderExplorer();
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  function reloadExplorer() {
+    explorerPage = 1;
+    renderExplorer();
+  }
+
+  function renderExplorer() {
+    const search = document.getElementById('explorer-search').value.toLowerCase();
+    const levelFilter = document.getElementById('explorer-alert-filter').value;
+
+    let filtered = allDetails.filter(r => {
+      const matchSearch = !search || r.city.toLowerCase().includes(search) || r.disease.toLowerCase().includes(search) || (r.country||'').toLowerCase().includes(search);
+      const matchLevel = !levelFilter || r.alert_level === levelFilter;
+      return matchSearch && matchLevel;
+    });
+
+    const perPage = 25;
+    explorerPages = Math.max(1, Math.ceil(filtered.length / perPage));
+    explorerPage = Math.min(explorerPage, explorerPages);
+    const start = (explorerPage - 1) * perPage;
+    const pageItems = filtered.slice(start, start + perPage);
+
+    document.getElementById('explorer-pagination-info').textContent =
+      `Showing ${start+1}–${Math.min(start+perPage, filtered.length)} of ${filtered.length} rows`;
+
+    document.getElementById('explorer-prev-btn').disabled = explorerPage <= 1;
+    document.getElementById('explorer-next-btn').disabled = explorerPage >= explorerPages;
+
+    const tbody = document.getElementById('explorer-tbody');
+    if (pageItems.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="11" class="text-center text-muted py-4">No results match your filter.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = pageItems.map(r => {
+          const prob = r.lstm_probability != null ? (r.lstm_probability * 100).toFixed(1) + '%' : '—';
+      const probColor = r.lstm_probability >= 0.5 ? '#EF4444' : r.lstm_probability >= 0.28 ? '#F59E0B' : '#6B7280';
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.03); cursor:pointer;" onclick='openXAIDrawer(${JSON.stringify(r).replace(/"/g,"&quot;")})'>
+          <td style="padding:10px 16px; font-weight:700;">${r.city}</td>
+          <td style="color:#8B95A7;">${r.country}</td>
+          <td>${r.disease}</td>
+          <td style="color:#8B95A7;">${r.week}</td>
+          <td style="text-align:center;"><span style="color:${r.if_flag ? '#EF4444':'#6B7280'}; font-weight:700;">${r.if_flag ? '✓':'-'}</span></td>
+          <td style="text-align:center;"><span style="color:${r.dbscan_flag ? '#F59E0B':'#6B7280'}; font-weight:700;">${r.dbscan_flag ? '✓':'-'}</span></td>
+          <td style="text-align:center; color:${probColor}; font-weight:700;">${prob}</td>
+          <td style="text-align:center; font-weight:800; font-size:15px;">${r.points}</td>
+          <td style="text-align:center;"><span class="alert-badge ${r.alert_level}">${r.alert_level}</span></td>
+          <td style="text-align:right; padding-right:16px;">
+            <button class="btn btn-sm btn-outline-info" onclick='event.stopPropagation(); openXAIDrawer(${JSON.stringify(r).replace(/"/g,"&quot;")})'  style="font-size:10px; padding:2px 8px;">🧠 Explain</button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function explorerPrev() { explorerPage--; renderExplorer(); }
+  function explorerNext() { explorerPage++; renderExplorer(); }
+
+  // ─── XAI: delegate to global drawer ────────────────────────────
+  function showXAI(row) { openXAIDrawer(row); }
+
+  // ─── Synchronized Timeline Explorer ─────────────────────────────
+  let allTimelines = []; // stores full details for filtering
+
+  async function buildTimeline() {
+    // Use already-loaded allDetails
+    await new Promise(r => setTimeout(r, 400)); // wait for allDetails
+    if (!allDetails || allDetails.length === 0) {
+      document.getElementById('chart-timeline-sync').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-sub">No prediction data available.</div></div>';
+      return;
+    }
+    // populate selectors
+    const cities   = [...new Set(allDetails.map(x=>x.city))].sort();
+    const diseases = [...new Set(allDetails.map(x=>x.disease))].sort();
+    const cityEl   = document.getElementById('tl-city');
+    const disEl    = document.getElementById('tl-disease');
+    cities.forEach(c   => { const o=document.createElement('option'); o.value=c; o.text=c; cityEl.appendChild(o); });
+    diseases.forEach(d => { const o=document.createElement('option'); o.value=d; o.text=d; disEl.appendChild(o); });
+    updateTimeline();
+  }
+
+  function updateTimeline() {
+    const city    = document.getElementById('tl-city')?.value;
+    const disease = document.getElementById('tl-disease')?.value;
+
+    let data = allDetails.filter(r =>
+      (!city || r.city === city) && (!disease || r.disease === disease)
+    );
+
+    if (data.length === 0) {
+      document.getElementById('chart-timeline-sync').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-sub">No data for selected filter.</div></div>';
+      return;
+    }
+
+    // Aggregate by week
+    const weekMap = {};
+    data.forEach(r => {
+      const w = String(r.week);
+      if (!weekMap[w]) weekMap[w] = { fusion: 0, lstm: 0, lstmN: 0, if_cnt: 0, db_cnt: 0, total: 0 };
+      weekMap[w].fusion += (r.points || 0);
+      if (r.lstm_probability != null) { weekMap[w].lstm += r.lstm_probability; weekMap[w].lstmN++; }
+      if (r.if_flag) weekMap[w].if_cnt++;
+      if (r.dbscan_flag) weekMap[w].db_cnt++;
+      weekMap[w].total++;
+    });
+
+    const weeks   = Object.keys(weekMap).sort();
+    const fusion  = weeks.map(w => (weekMap[w].fusion / weekMap[w].total).toFixed(2));
+    const lstm    = weeks.map(w => weekMap[w].lstmN > 0 ? (weekMap[w].lstm / weekMap[w].lstmN * 100).toFixed(1) : 0);
+    const ifVals  = weeks.map(w => weekMap[w].if_cnt);
+    const dbVals  = weeks.map(w => weekMap[w].db_cnt);
+
+    const LAYOUT_BASE = {
+      paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+      font: { color: '#8B95A7', size: 10, family: 'Inter, sans-serif' },
+      margin: { t: 10, b: 30, l: 45, r: 16 },
+      xaxis: { gridcolor: 'rgba(255,255,255,0.05)', tickvals: weeks, ticktext: weeks.map((_,i)=>i%3===0?_:''), showspikes: true, spikecolor: '#6C63FF', spikewidth: 1, spikesnap: 'cursor', spikedash: 'dot' },
+      yaxis: { gridcolor: 'rgba(255,255,255,0.05)' },
+      hovermode: 'x unified'
+    };
+
+    const traces = [
+      // Lane 1: Fusion Score
+      { name: 'Avg Fusion Score', type: 'scatter', mode: 'lines+markers', x: weeks, y: fusion, line: { color: '#6C63FF', width: 2 }, marker: { size: 4 }, fill: 'tozeroy', fillcolor: 'rgba(108,99,255,0.07)', yaxis: 'y', xaxis: 'x', hovertemplate: 'Fusion: %{y}<extra></extra>' },
+      // Lane 2: LSTM %
+      { name: 'LSTM Prob (%)', type: 'scatter', mode: 'lines', x: weeks, y: lstm, line: { color: '#3B82F6', width: 2, dash: 'dot' }, yaxis: 'y2', xaxis: 'x', hovertemplate: 'LSTM: %{y}%<extra></extra>' },
+      // Lane 3: IF count
+      { name: 'IF Anomalies', type: 'bar', x: weeks, y: ifVals, marker: { color: 'rgba(239,68,68,0.5)' }, yaxis: 'y3', xaxis: 'x', hovertemplate: 'IF Flags: %{y}<extra></extra>' },
+      // Lane 4: DBSCAN count
+      { name: 'DBSCAN Clusters', type: 'bar', x: weeks, y: dbVals, marker: { color: 'rgba(245,158,11,0.5)' }, yaxis: 'y4', xaxis: 'x', hovertemplate: 'DBSCAN Flags: %{y}<extra></extra>' }
+    ];
+
+    const layout = {
+      ...LAYOUT_BASE,
+      showlegend: true,
+      legend: { x: 0, y: 1.05, orientation: 'h', font: { size: 9 }, bgcolor: 'transparent' },
+      grid: { rows: 4, columns: 1, pattern: 'independent', roworder: 'top to bottom' },
+      xaxis:  { ...LAYOUT_BASE.xaxis, domain: [0, 1], anchor: 'y4' },
+      xaxis2: { ...LAYOUT_BASE.xaxis, domain: [0, 1], anchor: 'y2', matches: 'x' },
+      xaxis3: { ...LAYOUT_BASE.xaxis, domain: [0, 1], anchor: 'y3', matches: 'x' },
+      xaxis4: { ...LAYOUT_BASE.xaxis, domain: [0, 1], anchor: 'y4', matches: 'x' },
+      yaxis:  { ...LAYOUT_BASE.yaxis, domain: [0.76, 1.0], title: { text: 'Fusion', font: { size: 9 } } },
+      yaxis2: { ...LAYOUT_BASE.yaxis, domain: [0.51, 0.74], title: { text: 'LSTM%', font: { size: 9 } } },
+      yaxis3: { ...LAYOUT_BASE.yaxis, domain: [0.26, 0.49], title: { text: 'IF Cnt', font: { size: 9 } } },
+      yaxis4: { ...LAYOUT_BASE.yaxis, domain: [0.01, 0.24], title: { text: 'DBSCAN', font: { size: 9 } } },
+    };
+    traces[1].xaxis = 'x2'; traces[2].xaxis = 'x3'; traces[3].xaxis = 'x4';
+
+    Plotly.newPlot('chart-timeline-sync', traces, layout, { responsive: true, displayModeBar: true, displaylogo: false, modeBarButtonsToRemove: ['lasso2d', 'select2d', 'resetScale2d'] });
+  }
+  // ─── Warnings ────────────────────────────────────────────────────
+  async function loadWarnings() {
+    try {
+      const r = await fetch(`/api/run/${RUN_ID}/warnings`);
+      const d = await r.json();
+      const el = document.getElementById('warnings-list-body');
+
+      if (!d.success || !d.data || d.data.length === 0) {
+        el.innerHTML = '<div class="text-success text-center py-4">✅ No pipeline warnings were generated during this execution.</div>';
+        return;
+      }
+      el.innerHTML = `<div style="padding: 12px 20px; display: flex; flex-direction: column; gap: 10px;">` +
+        d.data.map(w => `
+          <div style="background:rgba(245,158,11,0.04); border-left:4px solid #F59E0B; border-radius:4px; padding:12px 16px;">
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#F59E0B; letter-spacing:0.5px;">${w.type.replace(/_/g,' ')}</div>
+            <div style="font-size:12px; color:#EEF2FF; margin-top:4px;">${w.value}</div>
+          </div>
+        `).join('') + `</div>`;
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadRunSummary();
+    loadCharts();
+    loadAllDetails().then(() => buildTimeline());
+    loadWarnings();
+  });
+</script>
+{% endblock %}

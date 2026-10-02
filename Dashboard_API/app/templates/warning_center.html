@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% block title %}Warning Center — EpiSentinel Africa{% endblock %}
+{% block page_title %}Warning Analytics Center{% endblock %}
+{% block page_subtitle %}Aggregated anomalies, fallbacks, and missing telemetry alerts across runs{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-title">🔍 Warnings Filter Panel</div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label" style="font-size: 11px; color: #8B95A7; font-weight: 700; text-transform: uppercase;">Search Message</label>
+            <input type="text" id="warning-search" oninput="loadWarnings()" class="form-control" placeholder="Search warning text..." style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #EEF2FF; font-size: 12px; height: 36px;" />
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" style="font-size: 11px; color: #8B95A7; font-weight: 700; text-transform: uppercase;">Category</label>
+            <select id="warning-category" onchange="loadWarnings()" style="background: #161B22; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #EEF2FF; font-size: 12px; height: 36px; width: 100%; padding: 5px 10px;">
+              <option value="">All Categories</option>
+              <option value="missing_symptoms">Missing Symptoms</option>
+              <option value="fallback_age">Fallback Age</option>
+              <option value="fallback_coordinates">Fallback Coordinates</option>
+              <option value="unknown_city">Unknown City</option>
+              <option value="unknown_country">Unknown Country</option>
+              <option value="unknown_disease">Unknown Disease</option>
+              <option value="skipped_lstm_group">LSTM Skips (Too Short)</option>
+              <option value="dropped_dates">Dropped Dates</option>
+              <option value="duplicate_visits">Duplicate Visits</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label" style="font-size: 11px; color: #8B95A7; font-weight: 700; text-transform: uppercase;">Run ID</label>
+            <select id="warning-run-id" onchange="loadWarnings()" style="background: #161B22; border: 1px solid rgba(255,255,255,0.1); border-radius: 6px; color: #EEF2FF; font-size: 12px; height: 36px; width: 100%; padding: 5px 10px;">
+              <option value="">All Pipeline Runs</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-title">⚠️ Warnings Logs Summary</div>
+      <div class="card-body" style="padding: 10px 0;">
+        <div class="table-responsive">
+          <table class="table" style="font-size: 12px; color: #EEF2FF; vertical-align: middle;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); color: #8B95A7; font-size: 11px;">
+                <th style="padding: 12px 16px;">Pipeline Run</th>
+                <th>Category</th>
+                <th>Warning Message / Anomalous Data</th>
+                <th>Severity</th>
+                <th>Recommended Actions</th>
+              </tr>
+            </thead>
+            <tbody id="warnings-tbody">
+              <tr>
+                <td colspan="5" class="text-center py-4">
+                  <div class="spinner"></div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3 px-3" style="font-size: 11px; color: #8B95A7;">
+          <span id="warnings-pages-indicator">Page 1 of 1</span>
+          <div class="btn-group">
+            <button class="btn btn-sm btn-outline-secondary" onclick="prevWarningPage()" id="prev-warn-btn" disabled>&larr; Prev</button>
+            <button class="btn btn-sm btn-outline-secondary" onclick="nextWarningPage()" id="next-warn-btn" disabled>Next &rarr;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  let warnPage = 1;
+  let warnPages = 1;
+
+  async function loadRunsDropdown() {
+    try {
+      const r = await fetch('/api/history');
+      const d = await r.json();
+      if (d.success && d.data) {
+        const select = document.getElementById('warning-run-id');
+        d.data.forEach(run => {
+          const opt = document.createElement('option');
+          opt.value = run.upload_id;
+          opt.textContent = `${run.original_filename} (${run.upload_time})`;
+          select.appendChild(opt);
+        });
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  async function loadWarnings() {
+    const search = document.getElementById('warning-search').value;
+    const cat = document.getElementById('warning-category').value;
+    const run = document.getElementById('warning-run-id').value;
+    
+    try {
+      const r = await fetch(`/api/warnings/aggregate?page=${warnPage}&search=${encodeURIComponent(search)}&category=${cat}&run_id=${run}`);
+      const d = await r.json();
+      const tbody = document.getElementById('warnings-tbody');
+      
+      if (d.success && d.data) {
+        warnPages = d.pages;
+        document.getElementById('warnings-pages-indicator').textContent = `Page ${warnPage} of ${warnPages}`;
+        document.getElementById('prev-warn-btn').disabled = warnPage <= 1;
+        document.getElementById('next-warn-btn').disabled = warnPage >= warnPages;
+        
+        if (d.data.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted" style="padding: 20px;">No warnings found matching the criteria.</td></tr>';
+          return;
+        }
+        
+        tbody.innerHTML = d.data.map(w => {
+          let badgeColor = w.severity === "Warning" ? "bg-warning text-dark" : "bg-info text-white";
+          
+          // Generate user friendly action based on warning category
+          let action = "No action required. Resolved by pipeline rules.";
+          if (w.type === "missing_symptoms") {
+            action = "Verify symptom logs reporting. Add missing symptom columns to next batch upload.";
+          } else if (w.type === "fallback_coordinates") {
+            action = "Verify coordinate fields. Ensure LAT/LON are provided for precise mapping.";
+          } else if (w.type === "fallback_age") {
+            action = "Ensure AGE_AT_VISIT column contains non-null values.";
+          } else if (w.type === "skipped_lstm_group") {
+            action = "Ensure historical dataset contains at least 8 continuous weeks for the city.";
+          } else if (w.type === "dropped_dates") {
+            action = "Correct unparseable date strings in patient visit records.";
+          }
+          
+          return `
+            <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+              <td style="padding: 12px 16px; font-weight: 700; color: #EEF2FF;">${w.run_name}</td>
+              <td style="color: #6C63FF; font-weight: 700; text-transform: uppercase; font-size: 10px;">${w.type.replace(/_/g, ' ')}</td>
+              <td>${w.value}</td>
+              <td><span class="badge ${badgeColor}" style="font-size: 9px; padding: 3px 6px;">${w.severity}</span></td>
+              <td style="font-style: italic; color: #8B95A7;">${action}</td>
+            </tr>
+          `;
+        }).join('');
+      }
+    } catch(e) {
+      console.error(e);
+    }
+  }
+
+  function prevWarningPage() {
+    if (warnPage > 1) {
+      warnPage--;
+      loadWarnings();
+    }
+  }
+
+  function nextWarningPage() {
+    if (warnPage < warnPages) {
+      warnPage++;
+      loadWarnings();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    loadRunsDropdown();
+    loadWarnings();
+  });
+</script>
+{% endblock %}

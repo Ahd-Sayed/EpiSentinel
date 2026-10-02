@@ -1,0 +1,245 @@
+{% extends "base.html" %}
+{% block title %}Compare Runs — EpiSentinel Africa{% endblock %}
+{% block page_title %}Run Comparison Dashboard{% endblock %}
+{% block page_subtitle %}Compare two pipeline executions side-by-side to detect model drift and data changes{% endblock %}
+
+{% block content %}
+<style>
+  .compare-diff {
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-weight: 700;
+  }
+  .compare-diff.better  { background: rgba(16,185,129,0.15); color: #A7F3D0; }
+  .compare-diff.worse   { background: rgba(239,68,68,0.15);  color: #FCA5A5; }
+  .compare-diff.neutral { background: rgba(107,114,128,0.15);color: #D1D5DB; }
+</style>
+
+<!-- ─── Selector Row ─────────────────────────────────────────────── -->
+<div class="row mb-4">
+  <div class="col-md-5 mb-3">
+    <div class="card">
+      <div class="card-title">📁 Run A (Baseline)</div>
+      <div class="card-body">
+        <select id="run-a-select" class="form-control" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); color:#EEF2FF; font-size:13px;">
+          <option value="">— Select a completed run —</option>
+        </select>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-2 d-flex align-items-center justify-content-center mb-3">
+    <div style="font-size: 28px; color: #5A6578;">⇄</div>
+  </div>
+  <div class="col-md-5 mb-3">
+    <div class="card">
+      <div class="card-title">📁 Run B (Compare)</div>
+      <div class="card-body">
+        <select id="run-b-select" class="form-control" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); color:#EEF2FF; font-size:13px;">
+          <option value="">— Select a completed run —</option>
+        </select>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row mb-4">
+  <div class="col-md-12 text-center">
+    <button class="btn btn-primary px-5 py-2" onclick="loadComparison()" id="compare-btn" style="font-weight:700; letter-spacing:0.5px;">
+      ⚡ Compare Runs
+    </button>
+  </div>
+</div>
+
+<!-- ─── Comparison Results ─────────────────────────────────────────── -->
+<div id="comparison-results" style="display:none;">
+
+  <!-- Side-by-side KPI Diff Table -->
+  <div class="row mb-4">
+    <div class="col-md-12">
+      <div class="card">
+        <div class="card-title">📊 Comparison Summary</div>
+        <div class="card-body" style="padding: 0;">
+          <table class="table" style="font-size: 13px; color: #EEF2FF; vertical-align: middle;">
+            <thead>
+              <tr style="border-bottom: 1px solid rgba(255,255,255,0.08); font-size: 11px; color: #8B95A7;">
+                <th style="padding: 12px 16px;">Metric</th>
+                <th id="col-run-a" style="text-align:right; color:#6C63FF;">Run A</th>
+                <th id="col-run-b" style="text-align:right; color:#00D4FF;">Run B</th>
+                <th style="text-align:right; padding-right:16px;">Difference</th>
+              </tr>
+            </thead>
+            <tbody id="comparison-table-body">
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Charts Row -->
+  <div class="row mb-4">
+    <div class="col-md-6 mb-3">
+      <div class="card h-100">
+        <div class="card-title">📊 Alert Level Distribution</div>
+        <div id="chart-compare-dist" style="min-height: 280px;"><div class="spinner"></div></div>
+      </div>
+    </div>
+    <div class="col-md-6 mb-3">
+      <div class="card h-100">
+        <div class="card-title">🕸️ Radar Comparison</div>
+        <div id="chart-compare-radar" style="min-height: 280px;"><div class="spinner"></div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div id="comparison-empty" class="text-center text-muted" style="padding: 80px 0;">
+  <div style="font-size: 40px; margin-bottom: 16px;">⇄</div>
+  <div style="font-size: 14px;">Select two completed pipeline runs and click <strong>Compare Runs</strong> to generate the analysis.</div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+<script>
+  const PLOTLY_LAYOUT = {
+    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+    font: { color: '#8B95A7', family: 'Inter, sans-serif', size: 11 },
+    margin: { t: 20, b: 40, l: 40, r: 20 },
+    showlegend: true,
+    legend: { bgcolor: 'transparent', font: { color: '#8B95A7', size: 10 } }
+  };
+
+  async function loadRunList() {
+    const r = await fetch('/api/history');
+    const d = await r.json();
+    if (!d.success) return;
+    const completed = d.data.filter(x => x.status === 'Completed');
+    ['run-a-select', 'run-b-select'].forEach(id => {
+      const el = document.getElementById(id);
+      completed.forEach(run => {
+        const opt = document.createElement('option');
+        opt.value = run.prediction_id;
+        opt.textContent = `#${run.prediction_id} — ${run.original_filename} (${run.upload_time})`;
+        el.appendChild(opt);
+      });
+    });
+  }
+
+  async function loadComparison() {
+    const runA = document.getElementById('run-a-select').value;
+    const runB = document.getElementById('run-b-select').value;
+    if (!runA || !runB || runA === runB) {
+      showToast('Selection Required', 'Please select two different completed runs to compare.', 'Warning');
+      return;
+    }
+
+    const btn = document.getElementById('compare-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Comparing...';
+
+    try {
+      const r = await fetch(`/api/runs/compare?run_a=${runA}&run_b=${runB}`);
+      const d = await r.json();
+      btn.disabled = false;
+      btn.textContent = '⚡ Compare Runs';
+
+      if (!d.success) {
+        showToast('Error', d.message || 'Comparison failed', 'Emergency');
+        return;
+      }
+
+      const a = d.data.run_a;
+      const b = d.data.run_b;
+
+      // Update column headers
+      document.getElementById('col-run-a').textContent = a.filename;
+      document.getElementById('col-run-b').textContent = b.filename;
+
+      // Build diff table
+      const metrics = [
+        { label: 'Rows Processed', va: a.rows, vb: b.rows, better: 'higher' },
+        { label: 'Execution Duration (s)', va: a.duration, vb: b.duration, better: 'lower' },
+        { label: 'Pipeline Warnings', va: a.warnings, vb: b.warnings, better: 'lower' },
+        { label: 'Total Alerts', va: a.alerts, vb: b.alerts, better: 'neutral' },
+        { label: 'Average LSTM Probability', va: a.avg_prob, vb: b.avg_prob, better: 'lower', pct: true },
+        { label: 'Quality Score', va: a.quality_score, vb: b.quality_score, better: 'higher', pct: true },
+        { label: 'Emergency Count', va: a.levels.Emergency, vb: b.levels.Emergency, better: 'lower' },
+        { label: 'Warning Count', va: a.levels.Warning, vb: b.levels.Warning, better: 'lower' },
+        { label: 'Watch Count', va: a.levels.Watch, vb: b.levels.Watch, better: 'lower' },
+        { label: 'Normal Count', va: a.levels.Normal, vb: b.levels.Normal, better: 'higher' }
+      ];
+
+      document.getElementById('comparison-table-body').innerHTML = metrics.map(m => {
+        const diff = Number((m.vb - m.va).toFixed(3));
+        const sign = diff > 0 ? '+' : '';
+        let diffClass = 'neutral';
+        if (m.better !== 'neutral') {
+          if ((m.better === 'higher' && diff > 0) || (m.better === 'lower' && diff < 0)) diffClass = 'better';
+          else if (diff !== 0) diffClass = 'worse';
+        }
+        const fmt = v => m.pct ? (v||0).toFixed(1) + '%' : (v||0).toLocaleString();
+        return `
+          <tr style="border-bottom: 1px solid rgba(255,255,255,0.04);">
+            <td style="padding: 10px 16px; color: #8B95A7;">${m.label}</td>
+            <td style="text-align:right; color:#6C63FF; font-weight:700;">${fmt(m.va)}</td>
+            <td style="text-align:right; color:#00D4FF; font-weight:700;">${fmt(m.vb)}</td>
+            <td style="text-align:right; padding-right:16px;"><span class="compare-diff ${diffClass}">${sign}${m.pct ? diff.toFixed(1)+'%' : diff.toLocaleString()}</span></td>
+          </tr>
+        `;
+      }).join('');
+
+      // Grouped bar chart — Alert levels
+      const levels = ['Emergency', 'Warning', 'Watch', 'Normal'];
+      Plotly.newPlot('chart-compare-dist', [
+        { name: a.filename, type: 'bar', x: levels, y: levels.map(l => a.levels[l]), marker: { color: '#6C63FF' } },
+        { name: b.filename, type: 'bar', x: levels, y: levels.map(l => b.levels[l]), marker: { color: '#00D4FF' } }
+      ], { ...PLOTLY_LAYOUT, barmode: 'group', xaxis: { gridcolor: 'rgba(255,255,255,0.06)' }, yaxis: { gridcolor: 'rgba(255,255,255,0.06)' } }, { responsive: true, displayModeBar: false });
+
+      // Radar chart
+      const cats = ['Total Alerts', 'Emergency', 'Avg Prob (%)', 'Quality Score', 'Warnings'];
+      const normalize = (v, max) => max > 0 ? (v / max) * 100 : 0;
+      const maxAlerts = Math.max(a.alerts, b.alerts) || 1;
+      const maxEmerg  = Math.max(a.levels.Emergency, b.levels.Emergency) || 1;
+      const maxWarn   = Math.max(a.warnings, b.warnings) || 1;
+
+      Plotly.newPlot('chart-compare-radar', [
+        {
+          type: 'scatterpolar', fill: 'toself', name: a.filename,
+          r: [
+            normalize(a.alerts, maxAlerts), normalize(a.levels.Emergency, maxEmerg),
+            (a.avg_prob || 0) * 100, a.quality_score || 0, normalize(a.warnings, maxWarn)
+          ], theta: cats, marker: { color: '#6C63FF' }, line: { color: '#6C63FF' }, fillcolor: 'rgba(108,99,255,0.15)'
+        },
+        {
+          type: 'scatterpolar', fill: 'toself', name: b.filename,
+          r: [
+            normalize(b.alerts, maxAlerts), normalize(b.levels.Emergency, maxEmerg),
+            (b.avg_prob || 0) * 100, b.quality_score || 0, normalize(b.warnings, maxWarn)
+          ], theta: cats, marker: { color: '#00D4FF' }, line: { color: '#00D4FF' }, fillcolor: 'rgba(0,212,255,0.1)'
+        }
+      ], {
+        ...PLOTLY_LAYOUT,
+        polar: {
+          bgcolor: 'transparent',
+          radialaxis: { visible: true, range: [0,100], gridcolor: 'rgba(255,255,255,0.1)', tickfont: { size: 9, color: '#8B95A7' } },
+          angularaxis: { gridcolor: 'rgba(255,255,255,0.1)' }
+        },
+        margin: { t: 30, b: 30, l: 30, r: 30 }
+      }, { responsive: true, displayModeBar: false });
+
+      document.getElementById('comparison-empty').style.display = 'none';
+      document.getElementById('comparison-results').style.display = 'block';
+
+    } catch(e) {
+      btn.disabled = false;
+      btn.textContent = '⚡ Compare Runs';
+      showToast('Error', 'Failed to load comparison data.', 'Emergency');
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', loadRunList);
+</script>
+{% endblock %}

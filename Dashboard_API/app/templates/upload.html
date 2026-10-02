@@ -1,0 +1,715 @@
+{% extends "base.html" %}
+{% block title %}Upload & Pipeline Runs — EpiSentinel Africa{% endblock %}
+{% block page_title %}Dataset Upload &amp; Pipeline Runs{% endblock %}
+{% block page_subtitle %}Import patient-visit datasets and execute the end-to-end surveillance ML pipeline{% endblock %}
+
+{% block content %}
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<style>
+  /* ── Upload Wizard ─────────────────────────────────────── */
+  .wizard-steps {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 28px;
+    border-bottom: 2px solid rgba(255,255,255,0.05);
+    padding-bottom: 0;
+  }
+  .wizard-step-btn {
+    background: none;
+    border: none;
+    color: #5A6578;
+    font-size: 12px;
+    font-weight: 600;
+    padding: 10px 16px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    cursor: default;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: color 0.2s;
+  }
+  .wizard-step-btn.active { color: #6C63FF; border-bottom-color: #6C63FF; }
+  .wizard-step-btn.done   { color: #10B981; border-bottom-color: #10B981; }
+  .wizard-step-btn span.step-num {
+    width: 20px; height: 20px; border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 10px;
+  }
+  .wizard-step-btn.active span.step-num { background: rgba(108,99,255,0.25); color: #6C63FF; }
+  .wizard-step-btn.done   span.step-num { background: rgba(16,185,129,0.25); color: #10B981; }
+
+  /* Drop zone */
+  .drop-zone {
+    border: 2px dashed rgba(108,99,255,0.35);
+    border-radius: 10px;
+    background: rgba(108,99,255,0.03);
+    padding: 48px 24px;
+    text-align: center;
+    transition: all 0.25s;
+    cursor: pointer;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: #6C63FF;
+    background: rgba(108,99,255,0.1);
+    transform: scale(1.01);
+  }
+  .drop-zone-icon { font-size: 44px; margin-bottom: 12px; }
+
+  /* Metric gauges */
+  .gauge-row {
+    display: flex; gap: 12px; flex-wrap: wrap;
+    margin-bottom: 16px;
+  }
+  .gauge-card {
+    flex: 1; min-width: 120px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 8px; padding: 14px;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,0.06);
+  }
+  .gauge-value { font-size: 28px; font-weight: 800; }
+  .gauge-label { font-size: 10px; color: #8B95A7; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .gauge-bar { height: 4px; border-radius: 2px; background: rgba(255,255,255,0.07); margin-top: 8px; }
+  .gauge-fill { height: 4px; border-radius: 2px; }
+
+  /* Rec cards */
+  .rec-card { 
+    border-radius: 6px; padding: 10px 14px; font-size: 12px; margin-bottom: 8px;
+    display: flex; align-items: flex-start; gap: 10px;
+  }
+  .rec-card.info    { background: rgba(59,130,246,0.08); border-left: 3px solid #3B82F6; }
+  .rec-card.warning { background: rgba(245,158,11,0.08); border-left: 3px solid #F59E0B; }
+  .rec-card.success { background: rgba(16,185,129,0.08); border-left: 3px solid #10B981; }
+
+  /* Progress timeline */
+  .pipeline-stage {
+    display: flex; align-items: center; gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    font-size: 12px;
+  }
+  .pipeline-stage:last-child { border-bottom: none; }
+  .stage-icon { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; flex-shrink: 0; }
+  .stage-icon.pending  { background: rgba(255,255,255,0.06); color: #5A6578; }
+  .stage-icon.running  { background: rgba(59,130,246,0.15); color: #3B82F6; }
+  .stage-icon.done     { background: rgba(16,185,129,0.15); color: #10B981; }
+  .stage-icon.error    { background: rgba(239,68,68,0.15);  color: #EF4444; }
+  .stage-progress-wrap { flex: 1; }
+  .stage-label { font-weight: 600; color: #EEF2FF; }
+  .stage-sub   { color: #8B95A7; font-size: 11px; margin-top: 2px; }
+  .stage-bar   { height: 4px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 6px; }
+  .stage-bar-fill { height: 4px; border-radius: 2px; background: #3B82F6; transition: width 0.4s ease; }
+
+  /* Status badge */
+  .status-badge { padding: 3px 8px; border-radius: 4px; font-size: 10px; font-weight: 700; }
+  .status-badge.Completed { background: rgba(16,185,129,0.15); color: #A7F3D0; border: 1px solid rgba(16,185,129,0.3); }
+  .status-badge.Running   { background: rgba(59,130,246,0.15);  color: #93C5FD; border: 1px solid rgba(59,130,246,0.3);  }
+  .status-badge.Failed    { background: rgba(239,68,68,0.15);   color: #FCA5A5; border: 1px solid rgba(239,68,68,0.3);   }
+  .status-badge.Queued    { background: rgba(107,114,128,0.15); color: #E5E7EB; border: 1px solid rgba(107,114,128,0.3); }
+</style>
+
+<!-- ─── Wizard Tabs ─────────────────────────────────────────────────── -->
+<div class="wizard-steps" id="wizard-tabs">
+  <button class="wizard-step-btn active" id="step-tab-1">
+    <span class="step-num">1</span> Select File
+  </button>
+  <button class="wizard-step-btn" id="step-tab-2">
+    <span class="step-num">2</span> Validation Report
+  </button>
+  <button class="wizard-step-btn" id="step-tab-3">
+    <span class="step-num">3</span> Recommendations
+  </button>
+  <button class="wizard-step-btn" id="step-tab-4">
+    <span class="step-num">4</span> Execution Monitor
+  </button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- STEP 1 — File Selection -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="step-1" class="wizard-pane">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-title">📁 Select Patient-Visit Dataset</div>
+        <div class="card-body">
+          <div id="drop-zone" class="drop-zone" onclick="document.getElementById('file-input').click()">
+            <div class="drop-zone-icon">📂</div>
+            <p style="font-size: 15px; font-weight: 700; color: #EEF2FF; margin-bottom: 6px;">Drag &amp; drop your dataset here</p>
+            <p style="font-size: 12px; color: #8B95A7; margin-bottom: 0;">Supports <strong>CSV</strong> and <strong>XLSX</strong> formats</p>
+            <input type="file" id="file-input" accept=".csv,.xlsx,.xls" style="display:none;" />
+          </div>
+
+          <div id="file-preview" style="display:none; margin-top: 20px;">
+            <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:8px; padding:16px; display:flex; gap:16px; align-items:center;">
+              <div style="font-size: 32px;">📄</div>
+              <div style="flex: 1;">
+                <div style="font-weight:700; color:#EEF2FF; font-size:14px;" id="preview-name">—</div>
+                <div style="font-size:12px; color:#8B95A7; margin-top:2px;" id="preview-meta">—</div>
+              </div>
+              <button class="btn btn-sm btn-outline-secondary" onclick="clearFile()">✕ Clear</button>
+            </div>
+            <button id="validate-btn" class="btn btn-primary w-100 mt-3" onclick="startValidation()" style="font-weight:700; padding:10px;">
+              🔍 Validate Dataset &amp; Generate Report
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- STEP 2 — Validation Report -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="step-2" class="wizard-pane" style="display:none;">
+  <div id="validation-loading" class="text-center py-5">
+    <div class="spinner" style="width:40px;height:40px;"></div>
+    <p style="color:#8B95A7; margin-top:16px; font-size:13px;">Analysing dataset structure, column coverage, and quality metrics…</p>
+  </div>
+  <div id="validation-report" style="display:none;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+      <h4 style="font-size:14px; font-weight:700; color:#EEF2FF; margin:0;">📋 Dataset Profile Report</h4>
+      <button class="btn btn-sm btn-outline-info" id="export-pdf-report-btn" onclick="exportProfilePDF()" style="font-size:11px;">📄 Export PDF Profile</button>
+    </div>
+    <!-- Quality Scores -->
+    <div class="gauge-row" id="gauge-row"></div>
+    <!-- Detailed Stats Table & Chart -->
+    <div class="row mb-4">
+      <div class="col-md-6 mb-3">
+        <div class="card">
+          <div class="card-title">📋 Dataset Overview</div>
+          <div class="card-body" style="padding:0;">
+            <table class="table" style="font-size:12px; color:#EEF2FF; margin:0;">
+              <tbody id="dataset-stats-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6 mb-3">
+        <div class="card">
+          <div class="card-title">✅ Column Validation &amp; Health Chart</div>
+          <div class="card-body" style="padding: 16px;">
+            <div id="column-validation-body"></div>
+            <div id="quality-profile-chart" style="height:170px; margin-top:12px;"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="text-center mt-2">
+      <button class="btn btn-primary px-5 py-2" onclick="goToStep(3)" style="font-weight:700;">
+        View Recommendations &rarr;
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- STEP 3 — Recommendations -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="step-3" class="wizard-pane" style="display:none;">
+  <div class="row justify-content-center">
+    <div class="col-md-8">
+      <div class="card">
+        <div class="card-title">💡 Quality Recommendations</div>
+        <div class="card-body" id="recommendations-body"></div>
+        <div class="card-body" style="padding-top: 0;">
+          <div id="ready-status" style="background:rgba(16,185,129,0.08); border:1px solid rgba(16,185,129,0.2); border-radius:8px; padding:16px; display:none;">
+            <div style="font-weight:700; color:#10B981; font-size:14px; margin-bottom:6px;">✅ Dataset Ready for Execution</div>
+            <div style="font-size:12px; color:#8B95A7;">All required columns detected. Pipeline will process the dataset using Isolation Forest, DBSCAN, and LSTM ensemble models.</div>
+          </div>
+          <div style="display:flex; gap:12px; margin-top:16px; flex-wrap:wrap;">
+            <button class="btn btn-outline-secondary" onclick="goToStep(1)" style="flex:1; min-width:120px;">← Change File</button>
+            <button id="start-btn" class="btn btn-primary" onclick="startPipeline()" disabled style="flex:2; min-width:200px; font-weight:700; padding:10px;">
+              ⚡ Start ML Pipeline
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- STEP 4 — Live Execution Monitor -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div id="step-4" class="wizard-pane" style="display:none;">
+  <div class="row">
+    <!-- Left: Live metrics -->
+    <div class="col-md-4 mb-4">
+      <div class="card h-100">
+        <div class="card-title">⚡ Live Execution Metrics</div>
+        <div class="card-body">
+          <div class="gauge-row" style="flex-direction:column; gap:16px;">
+            <div>
+              <div style="font-size:11px; color:#8B95A7; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Progress</div>
+              <div style="font-size:32px; font-weight:800; color:#6C63FF;" id="exec-pct">0%</div>
+              <div style="height:6px; background:rgba(255,255,255,0.05); border-radius:3px; margin-top:6px;">
+                <div id="exec-pct-bar" style="height:6px; border-radius:3px; background:#6C63FF; width:0%; transition:width 0.4s;"></div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px; color:#8B95A7; font-weight:700; text-transform:uppercase; margin-bottom:4px;">Current Stage</div>
+              <div style="font-size:13px; font-weight:600; color:#EEF2FF;" id="exec-stage">—</div>
+              <div style="font-size:11px; color:#8B95A7; margin-top:2px;" id="exec-msg">Waiting to start...</div>
+            </div>
+            <div class="row" style="gap:0;">
+              <div class="col-6" style="padding:4px 8px;">
+                <div style="font-size:10px; color:#8B95A7; text-transform:uppercase;">Elapsed</div>
+                <div style="font-weight:700; color:#EEF2FF;" id="exec-elapsed">0s</div>
+              </div>
+              <div class="col-6" style="padding:4px 8px;">
+                <div style="font-size:10px; color:#8B95A7; text-transform:uppercase;">ETA</div>
+                <div style="font-weight:700; color:#EEF2FF;" id="exec-eta">—</div>
+              </div>
+              <div class="col-6" style="padding:4px 8px;">
+                <div style="font-size:10px; color:#8B95A7; text-transform:uppercase;">Rows Done</div>
+                <div style="font-weight:700; color:#EEF2FF;" id="exec-rows">—</div>
+              </div>
+              <div class="col-6" style="padding:4px 8px;">
+                <div style="font-size:10px; color:#8B95A7; text-transform:uppercase;">Speed</div>
+                <div style="font-weight:700; color:#EEF2FF;" id="exec-speed">—</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- Right: Stage list -->
+    <div class="col-md-8 mb-4">
+      <div class="card h-100">
+        <div class="card-title">🔄 Pipeline Stage Tracker</div>
+        <div class="card-body" id="stage-list">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Completion actions (hidden until done) -->
+  <div id="exec-done-panel" style="display:none;" class="text-center mb-4">
+    <div style="font-size:40px; margin-bottom:12px;">✅</div>
+    <h4 style="color:#10B981; font-weight:800;">Pipeline Completed Successfully!</h4>
+    <div style="color:#8B95A7; font-size:13px; margin-bottom:20px;">All alerts, fusion scores, and risk assessments have been saved.</div>
+    <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap;">
+      <a id="view-run-btn" href="/" class="btn btn-primary px-4">🗺️ Open Run Dashboard</a>
+      <button class="btn btn-outline-secondary px-4" onclick="goToStep(1); resetWizard();">📤 Upload Another</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<!-- Pipeline History Table -->
+<!-- ══════════════════════════════════════════════════════════════════ -->
+<div class="row mt-4">
+  <div class="col-md-12">
+    <div class="card">
+      <div class="card-title" style="justify-content:space-between; align-items:center;">
+        <span>🕒 Pipeline Runs History</span>
+        <div style="display:flex; gap:8px;">
+          <a href="/compare" class="btn btn-sm btn-outline-info" style="font-size:11px;">⇄ Compare Runs</a>
+          <a href="/warning-center" class="btn btn-sm btn-outline-warning" style="font-size:11px;">⚠️ Warning Center</a>
+        </div>
+      </div>
+      <div class="card-body" style="padding: 10px 0;">
+        <div class="table-responsive" style="max-height:420px; overflow-y:auto;">
+          <table class="table" style="font-size:12px; color:#EEF2FF; vertical-align:middle;">
+            <thead>
+              <tr style="border-bottom:1px solid rgba(255,255,255,0.08); font-size:10px; color:#8B95A7; text-transform:uppercase;">
+                <th style="padding:12px 16px;">Dataset</th>
+                <th>Status</th>
+                <th>Rows</th>
+                <th>Quality</th>
+                <th>Duration</th>
+                <th>Alerts</th>
+                <th>Warnings</th>
+                <th style="text-align:right; padding-right:16px;">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="runs-history-tbody">
+              <tr><td colspan="8" class="text-center py-4"><div class="spinner"></div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  // ─── State ────────────────────────────────────────────────────────
+  let currentUploadId = null;
+  let currentPredictionId = null;
+  let progressPollInterval = null;
+  let selectedFile = null;
+
+  const STAGES = [
+    'Uploading Dataset', 'Reading CSV', 'Validating Dataset', 'Cleaning Data',
+    'Preparing Features', 'Running Isolation Forest', 'Running DBSCAN',
+    'Aggregating Weekly Data', 'Running LSTM', 'Fusion Scoring',
+    'Saving Results', 'Generating Analytics', 'Completed'
+  ];
+
+  const STAGE_ICONS = {
+    'Uploading Dataset': '☁️', 'Reading CSV': '📄', 'Validating Dataset': '✅',
+    'Cleaning Data': '🧹', 'Preparing Features': '🔧', 'Running Isolation Forest': '🌲',
+    'Running DBSCAN': '🔵', 'Aggregating Weekly Data': '📅', 'Running LSTM': '🧠',
+    'Fusion Scoring': '⚡', 'Saving Results': '💾', 'Generating Analytics': '📊',
+    'Completed': '✅'
+  };
+
+  // ─── Drag & Drop ──────────────────────────────────────────────────
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('file-input');
+
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('dragover');
+    if (e.dataTransfer.files.length) { fileInput.files = e.dataTransfer.files; handleFileSelected(); }
+  });
+  fileInput.addEventListener('change', handleFileSelected);
+
+  function handleFileSelected() {
+    const f = fileInput.files[0];
+    if (!f) return;
+    selectedFile = f;
+    const sizeMB = (f.size / 1024 / 1024).toFixed(2);
+    const estRows = Math.round(f.size / 200); // rough estimate
+    document.getElementById('preview-name').textContent = f.name;
+    document.getElementById('preview-meta').textContent = `${sizeMB} MB  ·  Modified ${new Date(f.lastModified).toLocaleDateString()}  ·  Est. ~${estRows.toLocaleString()} rows`;
+    document.getElementById('file-preview').style.display = 'block';
+    dropZone.style.display = 'none';
+  }
+
+  function clearFile() {
+    selectedFile = null;
+    fileInput.value = '';
+    document.getElementById('file-preview').style.display = 'none';
+    dropZone.style.display = 'block';
+  }
+
+  // ─── Wizard Navigation ────────────────────────────────────────────
+  function goToStep(n) {
+    [1,2,3,4].forEach(i => {
+      document.getElementById(`step-${i}`).style.display = i === n ? 'block' : 'none';
+      const tab = document.getElementById(`step-tab-${i}`);
+      tab.classList.remove('active', 'done');
+      if (i === n) tab.classList.add('active');
+      else if (i < n) tab.classList.add('done');
+    });
+    if (n === 3) renderRecommendations();
+  }
+
+  // ─── STEP 2: Validate ─────────────────────────────────────────────
+  async function startValidation() {
+    if (!selectedFile) return;
+
+    goToStep(2);
+    document.getElementById('validation-loading').style.display = 'block';
+    document.getElementById('validation-report').style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+
+    try {
+      const r = await fetch('/api/validate', { method: 'POST', body: formData });
+      if (!r.ok) {
+        if (r.status === 413) {
+          throw new Error("Server rejected the file. It might be too large.");
+        }
+        throw new Error(`Server error (${r.status}). The file might be too large or invalid.`);
+      }
+      const d = await r.json();
+
+      if (!d.success) {
+        document.getElementById('validation-loading').innerHTML = `
+          <div style="color:#EF4444; font-size:14px; font-weight:700;">❌ Validation Failed</div>
+          <div style="color:#8B95A7; margin-top:8px;">${d.message || 'Column check failed'}</div>
+          ${d.missing_columns ? '<div style="color:#FCA5A5; margin-top:4px;">Missing: ' + d.missing_columns.join(', ') + '</div>' : ''}
+          <button class="btn btn-outline-secondary mt-4" onclick="goToStep(1)">← Try Another File</button>
+        `;
+        return;
+      }
+
+      currentUploadId = d.upload_id;
+      const rep = d.report;
+
+      // Render quality gauges
+      const gauges = [
+        { label: 'Overall Quality', value: rep.quality_scores.overall, color: '#6C63FF' },
+        { label: 'Completeness', value: rep.quality_scores.completeness, color: '#10B981' },
+        { label: 'Consistency', value: rep.quality_scores.consistency, color: '#F59E0B' },
+        { label: 'Coverage', value: rep.quality_scores.coverage, color: '#00D4FF' }
+      ];
+      document.getElementById('gauge-row').innerHTML = gauges.map(g => `
+        <div class="gauge-card">
+          <div class="gauge-value" style="color:${g.color};">${g.value.toFixed(1)}%</div>
+          <div class="gauge-label">${g.label}</div>
+          <div class="gauge-bar"><div class="gauge-fill" style="width:${g.value}%; background:${g.color};"></div></div>
+        </div>
+      `).join('');
+
+      // Dataset stats table
+      const stats = [
+        ['Total Rows', rep.total_rows.toLocaleString()],
+        ['Total Columns', rep.total_columns],
+        ['Date Range', rep.date_range],
+        ['Unique Cities', rep.unique_cities],
+        ['Unique Diseases', rep.unique_diseases],
+        ['Duplicate Rows', rep.duplicate_rows.toLocaleString()],
+        ['Invalid Dates', rep.invalid_dates.toLocaleString()],
+        ['Null Values', rep.null_values.toLocaleString()],
+        ['Memory Usage', rep.memory_usage_mb + ' MB'],
+        ['Est. Exec Time', rep.est_exec_time_seconds + 's']
+      ];
+      document.getElementById('dataset-stats-body').innerHTML = stats.map(([k,v]) => `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:8px 16px; color:#8B95A7; font-size:11px; text-transform:uppercase; font-weight:700;">${k}</td>
+          <td style="padding:8px 16px; color:#EEF2FF; font-weight:700;">${v}</td>
+        </tr>
+      `).join('');
+
+      // Column validation
+      const reqHtml = rep.required_cols.map(c => `<div style="font-size:11px; color:#A7F3D0; padding:3px 0;">✅ ${c}</div>`).join('');
+      const optHtml = rep.detected_optional.slice(0,10).map(c => `<div style="font-size:11px; color:#8B95A7; padding:2px 0;">◉ ${c}</div>`).join('');
+      const missingHtml = rep.missing_optional.slice(0,6).map(c => `<div style="font-size:11px; color:#5A6578; padding:2px 0;">○ ${c}</div>`).join('');
+      document.getElementById('column-validation-body').innerHTML = `
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#10B981; padding-bottom:6px;">Required Columns (${rep.required_cols.length}/${rep.required_cols.length})</div>
+        ${reqHtml}
+        <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#6C63FF; padding:12px 0 6px;">Optional Detected (${rep.detected_optional.length})</div>
+        ${optHtml}
+        ${rep.missing_optional.length > 0 ? `
+          <div style="font-size:11px; font-weight:700; text-transform:uppercase; color:#5A6578; padding:12px 0 6px;">Missing Optional (${rep.missing_optional.length})</div>
+          ${missingHtml}
+        ` : ''}
+      `;
+
+      // Render health split donut chart
+      const totalCells = rep.total_rows * rep.total_columns;
+      const validCells = Math.max(0, totalCells - rep.null_values - rep.invalid_dates);
+      
+      Plotly.newPlot('quality-profile-chart', [{
+        type: 'pie',
+        hole: 0.55,
+        labels: ['Valid Cells', 'Null/Missing', 'Invalid Dates'],
+        values: [validCells, rep.null_values, rep.invalid_dates],
+        marker: { colors: ['#10B981', '#F59E0B', '#EF4444'] },
+        textinfo: 'percent',
+        textfont: { size: 9, color: '#EEF2FF' }
+      }], {
+        paper_bgcolor: 'transparent',
+        plot_bgcolor: 'transparent',
+        margin: { t: 5, b: 5, l: 5, r: 5 },
+        showlegend: true,
+        legend: { font: { size: 9, color: '#8B95A7' }, bgcolor: 'transparent', x: 0.6, y: 0.5 },
+        font: { color: '#8B95A7', family: 'Inter, sans-serif' }
+      }, { responsive: true, displayModeBar: false });
+
+      // Store recommendations for step 3
+      window._recommendations = rep.recommendations;
+
+      document.getElementById('validation-loading').style.display = 'none';
+      document.getElementById('validation-report').style.display = 'block';
+
+    } catch(e) {
+      document.getElementById('validation-loading').innerHTML = `
+        <div style="color:#EF4444; font-size:14px; font-weight:700;">❌ Request Failed</div>
+        <div style="color:#8B95A7; margin-top:8px;">${e.message}</div>
+        <button class="btn btn-outline-secondary mt-4" onclick="goToStep(1)">← Back</button>
+      `;
+    }
+  }
+
+  // ─── STEP 3: Recommendations ──────────────────────────────────────
+  function renderRecommendations() {
+    const recs = window._recommendations || [];
+    const body = document.getElementById('recommendations-body');
+    if (recs.length === 0) {
+      body.innerHTML = '<div class="text-success">✅ No issues found. Dataset is ready.</div>';
+    } else {
+      body.innerHTML = recs.map(r => `
+        <div class="rec-card ${r.type}">
+          <div>${r.message}</div>
+        </div>
+      `).join('');
+    }
+    const hasErrors = recs.some(r => r.type === 'error');
+    const startBtn = document.getElementById('start-btn');
+    const readyEl  = document.getElementById('ready-status');
+    startBtn.disabled = hasErrors;
+    if (!hasErrors) readyEl.style.display = 'block';
+  }
+
+
+
+  // ─── STEP 4: Start Pipeline ───────────────────────────────────────
+  async function startPipeline() {
+    if (!currentUploadId) return;
+    goToStep(4);
+    renderStageList(null);
+    document.getElementById('exec-done-panel').style.display = 'none';
+
+    const formData = new FormData();
+    formData.append('upload_id', currentUploadId);
+
+    try {
+      const r = await fetch('/api/predict', { method: 'POST', body: formData });
+      const d = await r.json();
+      if (r.status === 202) {
+        showToast('Pipeline Started', 'ML pipeline execution scheduled.', 'Success');
+        startProgressPolling(currentUploadId);
+      } else {
+        showToast('Error', d.message || 'Pipeline could not start', 'Emergency');
+      }
+    } catch(e) {
+      showToast('Error', e.message, 'Emergency');
+    }
+  }
+
+  function renderStageList(currentStage) {
+    const container = document.getElementById('stage-list');
+    container.innerHTML = STAGES.map(s => {
+      let statusClass = 'pending';
+      if (currentStage) {
+        const si = STAGES.indexOf(s);
+        const ci = STAGES.indexOf(currentStage);
+        if (si < ci) {
+          statusClass = 'done';
+        } else if (si === ci) {
+          statusClass = currentStage === 'Completed' ? 'done' : 'running';
+        }
+      }
+      return `
+        <div class="pipeline-stage">
+          <div class="stage-icon ${statusClass}">${STAGE_ICONS[s] || '○'}</div>
+          <div class="stage-progress-wrap">
+            <div class="stage-label">${s}</div>
+            ${statusClass === 'running' ? '<div class="stage-bar"><div class="stage-bar-fill" style="width:60%; animation:pulse 1.5s infinite;"></div></div>' : ''}
+          </div>
+          ${statusClass === 'done' ? '<span style="color:#10B981; font-size:11px;">✓</span>' : ''}
+          ${statusClass === 'running' ? '<span style="color:#3B82F6; font-size:11px;">⟳</span>' : ''}
+        </div>
+      `;
+    }).join('');
+  }
+
+  function startProgressPolling(uploadId) {
+    if (progressPollInterval) clearInterval(progressPollInterval);
+    progressPollInterval = setInterval(async () => {
+      try {
+        const r = await fetch(`/api/progress/${uploadId}`);
+        const d = await r.json();
+        if (!d.success) return;
+
+        document.getElementById('exec-pct').textContent = d.progress_percent + '%';
+        document.getElementById('exec-pct-bar').style.width = d.progress_percent + '%';
+        document.getElementById('exec-stage').textContent = d.progress_stage;
+        document.getElementById('exec-msg').textContent = d.pipeline_message;
+        document.getElementById('exec-elapsed').textContent = d.elapsed_seconds + 's';
+        document.getElementById('exec-eta').textContent = d.estimated_remaining > 0 ? d.estimated_remaining + 's' : '—';
+        document.getElementById('exec-rows').textContent = d.processed_rows > 0 ? d.processed_rows.toLocaleString() + ' / ' + d.total_rows.toLocaleString() : '—';
+        document.getElementById('exec-speed').textContent = d.current_speed > 0 ? d.current_speed.toLocaleString() + '/s' : '—';
+
+        renderStageList(d.progress_stage);
+
+        if (d.status === 'Completed' || d.progress_percent >= 100) {
+          clearInterval(progressPollInterval);
+          document.getElementById('exec-done-panel').style.display = 'block';
+          // Redirect to the main Overview Dashboard
+          document.getElementById('view-run-btn').href = "/";
+          loadRunsHistory();
+        }
+        if (d.status === 'Failed') {
+          clearInterval(progressPollInterval);
+          document.getElementById('exec-pct-bar').style.backgroundColor = '#EF4444';
+          document.getElementById('exec-stage').textContent = 'Pipeline Halted - Critical Error';
+          document.getElementById('exec-msg').textContent = d.pipeline_message || 'Execution failed. Check logs.';
+          document.getElementById('exec-msg').style.color = '#EF4444';
+          showToast('Pipeline Failed', 'Execution failed. Check logs.', 'Emergency');
+        }
+      } catch(e) { /* ignore polling errors */ }
+    }, 2000);
+  }
+
+  function resetWizard() {
+    currentUploadId = null;
+    clearFile();
+    window._recommendations = [];
+    if (progressPollInterval) clearInterval(progressPollInterval);
+  }
+
+  // ─── History Table ────────────────────────────────────────────────
+  async function loadRunsHistory() {
+    const r = await fetch('/api/history');
+    const d = await r.json();
+    const tbody = document.getElementById('runs-history-tbody');
+
+    if (!d.success || !d.data || d.data.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted py-4">No pipeline runs found.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = d.data.map(run => {
+      const qBadge = run.quality_score
+        ? `<span style="color:${run.quality_score >= 80 ? '#10B981' : '#F59E0B'}; font-weight:700;">${run.quality_score?.toFixed(0) || '—'}%</span>`
+        : '—';
+      let actionBtns = '';
+      if (run.status === 'Completed' && run.prediction_id) {
+        actionBtns = `
+          <a href="/runs/${run.prediction_id}" class="btn btn-sm btn-outline-success" style="font-size:10px; padding:2px 6px;">🗺️ Details</a>
+          <div class="dropdown d-inline">
+            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" style="font-size:10px; padding:2px 6px;" data-bs-toggle="dropdown">📥</button>
+            <ul class="dropdown-menu dropdown-menu-dark" style="font-size:11px;">
+              <li><a class="dropdown-item" href="/api/download/${run.prediction_id}/csv">CSV</a></li>
+              <li><a class="dropdown-item" href="/api/download/${run.prediction_id}/xlsx">Excel</a></li>
+              <li><a class="dropdown-item" href="/api/download/${run.prediction_id}/pdf">PDF</a></li>
+              <li><a class="dropdown-item" href="/api/download/${run.prediction_id}/json">JSON</a></li>
+            </ul>
+          </div>
+        `;
+      }
+      if (run.status === 'Running' || run.status === 'Queued') {
+        actionBtns = `<button class="btn btn-sm btn-outline-primary" style="font-size:10px;" onclick="watchProgress(${run.upload_id})">🔄 Monitor</button>`;
+      }
+
+      return `
+        <tr style="border-bottom:1px solid rgba(255,255,255,0.04);">
+          <td style="padding:10px 16px; font-weight:700; color:#EEF2FF; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${run.original_filename}</td>
+          <td><span class="status-badge ${run.status}">${run.status}</span></td>
+          <td>${(run.rows||0).toLocaleString()}</td>
+          <td>${qBadge}</td>
+          <td class="text-muted">${run.processing_time ? run.processing_time + 's' : '—'}</td>
+          <td style="font-weight:700; color:${run.emergency_count > 0 ? '#EF4444' : '#EEF2FF'};">${(run.total_alerts||0).toLocaleString()}</td>
+          <td class="text-muted">${run.warnings_count}</td>
+          <td style="text-align:right; padding-right:16px; display:flex; gap:4px; justify-content:flex-end;">${actionBtns}</td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  function watchProgress(uploadId) {
+    currentUploadId = uploadId;
+    goToStep(4);
+    renderStageList(null);
+    startProgressPolling(uploadId);
+  }
+
+  function exportProfilePDF() {
+    if (!currentUploadId) {
+      showToast('Export Error', 'No active upload dataset verified yet.', 'Warning');
+      return;
+    }
+    window.open(`/api/upload/${currentUploadId}/pdf-report`, '_blank');
+    showToast('Export Profile', 'Dataset profile PDF export started.', 'Success');
+  }
+
+  document.addEventListener('DOMContentLoaded', loadRunsHistory);
+
+</script>
+{% endblock %}

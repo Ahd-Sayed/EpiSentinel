@@ -1,0 +1,577 @@
+{% extends "base.html" %}
+{% block title %}Executive Dashboard — EpiGuard Africa{% endblock %}
+{% block page_title %}Executive Summary{% endblock %}
+{% block page_subtitle %}High-level health surveillance cockpit and spatial intelligence{% endblock %}
+
+{% block content %}
+<!-- Leaflet Map CSS -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.4.1/dist/MarkerCluster.Default.css" />
+<style>
+  #executive-map {
+    height: 380px;
+    width: 100%;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0B0F17;
+  }
+  .exec-kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 16px;
+    margin-bottom: 24px;
+  }
+  .exec-kpi-card {
+    background: rgba(22, 27, 34, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 16px 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .exec-kpi-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; bottom: 0;
+    width: 4px;
+  }
+  .exec-kpi-card.patients::before { background: #3B82F6; }
+  .exec-kpi-card.visits::before { background: #10B981; }
+  .exec-kpi-card.alerts::before { background: #6C63FF; }
+  .exec-kpi-card.emergency::before { background: #EF4444; }
+  .exec-kpi-card.warning::before { background: #F59E0B; }
+  .exec-kpi-card.watch::before { background: #3B82F6; }
+
+  .exec-kpi-val {
+    font-size: 22px;
+    font-weight: 800;
+    color: #EEF2FF;
+    line-height: 1.2;
+    margin-top: 4px;
+  }
+  .exec-kpi-lbl {
+    font-size: 11px;
+    font-weight: 600;
+    color: #8B95A7;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .exec-row-2 {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .exec-row-3 {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 24px;
+  }
+  .exec-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+    font-size: 12px;
+  }
+  .exec-list-item:last-child {
+    border-bottom: none;
+  }
+  .latest-alert-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+  }
+  .latest-alert-badge.Emergency { background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.3); }
+  .latest-alert-badge.Warning { background: rgba(245, 158, 11, 0.15); color: #FDE047; border: 1px solid rgba(245, 158, 11, 0.3); }
+
+  /* Mode Selector Styling */
+  .custom-mode-select {
+    appearance: none;
+    background-color: transparent;
+    color: #EEF2FF;
+    border: none;
+    padding: 8px 36px 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='%238B95A7' viewBox='0 0 16 16'%3E%3Cpath d='M7.247 11.14L2.451 5.658C1.885 5.013 2.345 4 3.204 4h9.592a1 1 0 0 1 .753 1.659l-4.796 5.48a1 1 0 0 1-1.506 0z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 10px 10px;
+    width: 100%;
+  }
+  .custom-mode-select:focus {
+    outline: none;
+    box-shadow: none;
+  }
+  .custom-mode-select option {
+    background-color: #1A1F2B;
+    color: #EEF2FF;
+    padding: 10px;
+  }
+  .mode-control-group {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 8px;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    transition: border-color 0.2s;
+    min-width: 320px;
+  }
+  .mode-control-group:hover {
+    border-color: rgba(108, 99, 255, 0.3);
+  }
+  .refresh-btn-premium {
+    background: rgba(108, 99, 255, 0.1);
+    color: #818CF8;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .refresh-btn-premium:hover {
+    background: rgba(108, 99, 255, 0.2);
+    color: #EEF2FF;
+  }
+  .refresh-icon {
+    font-size: 14px;
+    transition: transform 0.3s ease;
+  }
+  .refresh-btn-premium:active .refresh-icon {
+    transform: rotate(180deg);
+  }
+</style>
+
+<!-- Mode Selector Card -->
+<div class="card mb-4 border-0" style="background: linear-gradient(145deg, rgba(22, 27, 34, 0.9), rgba(15, 20, 25, 0.9)); box-shadow: 0 4px 20px rgba(0,0,0,0.2); border-radius: 12px;">
+  <div class="card-body d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-4" style="padding: 20px 24px;">
+    
+    <div class="d-flex align-items-center gap-3">
+      <div style="font-size: 24px; background: rgba(108, 99, 255, 0.1); padding: 12px; border-radius: 12px; color: #6C63FF; display: flex; align-items: center; justify-content: center; box-shadow: inset 0 0 0 1px rgba(108, 99, 255, 0.2);">
+        🛰️
+      </div>
+      <div>
+        <h3 style="font-size: 15px; font-weight: 700; color: #EEF2FF; margin: 0 0 4px 0; letter-spacing: 0.2px;">Surveillance Data Source</h3>
+        <p style="font-size: 12px; color: #8B95A7; margin: 0;">Toggle between historical database and custom dataset predictions</p>
+      </div>
+    </div>
+    
+    <div class="mode-control-group">
+      <div style="flex: 1;">
+        <select id="mode-selector" class="custom-mode-select">
+          <option value="historical">Historical Surveillance (Pre-imported)</option>
+        </select>
+      </div>
+      <div style="width: 1px; height: 24px; background: rgba(255,255,255,0.1); margin: 0 4px;"></div>
+      <button id="refresh-dashboard-btn" class="refresh-btn-premium">
+        <span class="refresh-icon">🔄</span> Refresh
+      </button>
+    </div>
+
+  </div>
+</div>
+
+<!-- ── KPI Dashboard Grid ─────────────────────────────────────────── -->
+<div class="exec-kpi-grid">
+  <div class="exec-kpi-card patients">
+    <div class="exec-kpi-lbl">Total Patients</div>
+    <div class="exec-kpi-val" id="exec-patients">—</div>
+  </div>
+  <div class="exec-kpi-card visits">
+    <div class="exec-kpi-lbl">Total Visits</div>
+    <div class="exec-kpi-val" id="exec-visits">—</div>
+  </div>
+  <div class="exec-kpi-card alerts">
+    <div class="exec-kpi-lbl">Total Alerts</div>
+    <div class="exec-kpi-val" id="exec-alerts-count">—</div>
+  </div>
+  <div class="exec-kpi-card emergency">
+    <div class="exec-kpi-lbl">Emergency alerts</div>
+    <div class="exec-kpi-val" id="exec-emergencies" style="color: #EF4444;">—</div>
+  </div>
+  <div class="exec-kpi-card warning">
+    <div class="exec-kpi-lbl">Warning Alerts</div>
+    <div class="exec-kpi-val" id="exec-warnings" style="color: #F59E0B;">—</div>
+  </div>
+  <div class="exec-kpi-card watch">
+    <div class="exec-kpi-lbl">Watch Alerts</div>
+    <div class="exec-kpi-val" id="exec-watches" style="color: #3B82F6;">—</div>
+  </div>
+</div>
+
+
+<!-- ── Map & Trends Row ───────────────────────────────────────────── -->
+<div class="exec-row-2">
+  <div class="card">
+    <div class="card-title" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
+      <span>🗺️ Spatial Outbreak Map</span>
+      <div class="btn-group btn-group-sm" role="group" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.08); border-radius:6px; padding:2px;">
+        <button class="btn btn-sm btn-outline-primary active" id="btn-map-pulse" onclick="changeMapMode('pulse')" style="font-size:10px; padding:3px 8px; border:none; border-radius:4px;">✨ Pulse</button>
+        <button class="btn btn-sm btn-outline-primary" id="btn-map-cluster" onclick="changeMapMode('cluster')" style="font-size:10px; padding:3px 8px; border:none; border-radius:4px;">👥 Cluster</button>
+        <button class="btn btn-sm btn-outline-primary" id="btn-map-heat" onclick="changeMapMode('heat')" style="font-size:10px; padding:3px 8px; border:none; border-radius:4px;">🔥 Heat</button>
+      </div>
+    </div>
+    <div id="executive-map"></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📈 12-Week Visit Volume Trend</div>
+    <div id="trend-chart" style="height: 380px;">
+      <div class="spinner" style="margin-top: 150px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Lists Row ──────────────────────────────────────────────────── -->
+<div class="exec-row-3">
+  <!-- Top Elements -->
+  <div class="card">
+    <div class="card-title">🏆 Top Risk Centers &amp; Diseases</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding-top: 10px;">
+      <div>
+        <h4 style="font-size: 12px; font-weight: 700; color: #EEF2FF; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; margin-bottom: 8px;">TOP CITIES</h4>
+        <div id="top-cities-container"></div>
+      </div>
+      <div>
+        <h4 style="font-size: 12px; font-weight: 700; color: #EEF2FF; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 6px; margin-bottom: 8px;">TOP DISEASES</h4>
+        <div id="top-diseases-container"></div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Latest Escalations -->
+  <div class="card">
+    <div class="card-title">🚨 Recent Critical Alert Escalations</div>
+    <div id="latest-alerts-container" style="padding-top: 10px;"></div>
+  </div>
+</div>
+
+<!-- Leaflet Map Script -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+<script src="https://unpkg.com/leaflet.markercluster@1.4.1/dist/leaflet.markercluster.js"></script>
+<script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  let mapInstance = null;
+  const PL = window.PLOT_LAYOUT;
+  const PC = window.PLOT_CONFIG;
+  const colors = { Emergency: '#EF4444', Warning: '#F59E0B', Watch: '#3B82F6', Normal: '#6B7280' };
+
+  async function loadPredictionRunsList() {
+    try {
+      const r = await fetch('/api/history');
+      const d = await r.json();
+      
+      const runs = d.data || d;
+      if (runs && Array.isArray(runs)) {
+        const selector = document.getElementById('mode-selector');
+        const savedVal = localStorage.getItem('selectedDataSource');
+        const currentVal = savedVal || selector.value;
+        
+        selector.innerHTML = '<option value="historical">Historical Surveillance (Pre-imported)</option>';
+        runs.forEach(run => {
+          if (run.status === "Completed") {
+            const opt = document.createElement('option');
+            opt.value = run.prediction_id;
+            opt.textContent = `Upload Run: ${run.original_filename} (${run.upload_time})`;
+            selector.appendChild(opt);
+          }
+        });
+        
+        // Restore value if it exists in the options
+        if (currentVal) {
+          selector.value = currentVal;
+          // Fallback if the saved run was deleted or invalid
+          if (!selector.value) {
+            selector.value = 'historical';
+            localStorage.setItem('selectedDataSource', 'historical');
+          }
+        }
+      }
+    } catch (e) {
+      console.error("Failed to load upload history list:", e);
+    }
+  }
+
+  async function loadExecutiveSummary() {
+    try {
+      const selector = document.getElementById('mode-selector');
+      const val = selector ? selector.value : 'historical';
+      let url = '/api/executive-summary';
+      if (val && val !== 'historical') {
+        url += `?prediction_id=${val}`;
+      }
+      
+      const r = await fetch(url);
+      const d = await r.json();
+      
+      // Handle standard envelope
+      const data = d.data || d;
+      
+      // Update KPIs
+      document.getElementById('exec-patients').textContent = (data.total_patients || 0).toLocaleString();
+      document.getElementById('exec-visits').textContent = (data.total_visits || 0).toLocaleString();
+      document.getElementById('exec-alerts-count').textContent = (data.total_alerts || 0).toLocaleString();
+      
+      const counts = data.alert_counts || { Emergency: 0, Warning: 0, Watch: 0 };
+      document.getElementById('exec-emergencies').textContent = (counts.Emergency || 0).toLocaleString();
+      document.getElementById('exec-warnings').textContent = (counts.Warning || 0).toLocaleString();
+      document.getElementById('exec-watches').textContent = (counts.Watch || 0).toLocaleString();
+      
+      // Render Trend Chart
+      renderTrendChart(data.trend || []);
+      
+      // Render Top Cities and Diseases
+      renderTopLists(data.top_cities || [], data.top_diseases || []);
+      
+      // Render Latest Alerts
+      renderLatestAlerts(data.latest_alerts || []);
+      
+      // Render Map
+      renderMap(data.map_locations || []);
+      
+    } catch (e) {
+      console.error(e);
+      showError('trend-chart', 'Failed to load executive summary trend');
+    }
+  }
+
+  function showError(elementId, msg) {
+    const el = document.getElementById(elementId);
+    if (el) {
+      el.innerHTML = `<div style="padding: 20px; color: #EF4444; font-size: 13px; text-align: center;">⚠️ ${msg}</div>`;
+    }
+  }
+
+  function renderTrendChart(trend) {
+    const x = trend.map(t => t.week);
+    const y = trend.map(t => t.visits);
+    const el = document.getElementById('trend-chart');
+    el.innerHTML = '';
+    
+    if (x.length === 0) {
+      el.innerHTML = '<div style="margin-top: 150px; text-align: center; color: #8B95A7;">No trend data available for this selection.</div>';
+      return;
+    }
+    
+    Plotly.newPlot(el, [{
+      x: x, y: y,
+      type: 'scatter', mode: 'lines+markers',
+      line: { color: '#6C63FF', width: 3 },
+      marker: { color: '#00D4FF', size: 6 },
+      fill: 'tozeroy',
+      fillcolor: 'rgba(108,99,255,0.06)',
+      hovertemplate: 'Week: %{x}<br>Visits/Alerts: %{y:,.0f}<extra></extra>'
+    }], {
+      ...PL,
+      margin: { t: 20, r: 20, b: 50, l: 50 },
+      xaxis: { ...PL.xaxis, title: { text: 'Week', font: { size: 10 } } },
+      yaxis: { ...PL.yaxis, title: { text: 'Volume', font: { size: 10 } } }
+    }, PC);
+  }
+
+  function renderTopLists(cities, diseases) {
+    const cityContainer = document.getElementById('top-cities-container');
+    if (cities.length === 0) {
+      cityContainer.innerHTML = '<div style="font-size:11px; color:#5A6578; padding:10px 0;">No high-risk cities.</div>';
+    } else {
+      cityContainer.innerHTML = cities.map((c, i) => `
+        <div class="exec-list-item">
+          <span><strong>${i+1}.</strong> ${c.city}</span>
+          <span style="font-weight:700; color:#EF4444;">${c.count} alerts</span>
+        </div>
+      `).join('');
+    }
+    
+    const disContainer = document.getElementById('top-diseases-container');
+    if (diseases.length === 0) {
+      disContainer.innerHTML = '<div style="font-size:11px; color:#5A6578; padding:10px 0;">No case data.</div>';
+    } else {
+      disContainer.innerHTML = diseases.map((d, i) => `
+        <div class="exec-list-item">
+          <span><strong>${i+1}.</strong> ${d.name}</span>
+          <span style="font-weight:700; color:#3B82F6;">${d.count.toLocaleString()}</span>
+        </div>
+      `).join('');
+    }
+  }
+
+  function renderLatestAlerts(alerts) {
+    const container = document.getElementById('latest-alerts-container');
+    if (alerts.length === 0) {
+      container.innerHTML = '<div style="text-align: center; color: #8B95A7; padding: 20px 0;">No critical alerts in this dataset.</div>';
+      return;
+    }
+    container.innerHTML = alerts.map(a => `
+      <div class="exec-list-item">
+        <div>
+          <strong>${a.city}</strong>
+          <div style="font-size:10px; color:#5A6578; margin-top:2px;">${a.disease} &bull; Score: ${a.score}</div>
+        </div>
+        <div style="text-align:right;">
+          <span class="latest-alert-badge ${a.level}">${a.level}</span>
+          <div style="font-size:9px; color:#5A6578; margin-top:2px;">${a.date}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  let cachedLocations = [];
+  let mapMode = 'pulse';
+
+  function changeMapMode(mode) {
+    mapMode = mode;
+    ['pulse', 'cluster', 'heat'].forEach(m => {
+      const btn = document.getElementById(`btn-map-${m}`);
+      if (btn) {
+        if (m === mode) btn.classList.add('active');
+        else btn.classList.remove('active');
+      }
+    });
+    renderMapWithOptions();
+  }
+
+  function renderMap(locations) {
+    cachedLocations = locations || [];
+    renderMapWithOptions();
+  }
+
+  function renderMapWithOptions() {
+    if (!mapInstance) {
+      mapInstance = L.map('executive-map').setView([1.0, 16.0], 3);
+    } else {
+      mapInstance.eachLayer(layer => {
+        if (layer instanceof L.TileLayer) return;
+        mapInstance.removeLayer(layer);
+      });
+    }
+
+    let baseLoaded = false;
+    mapInstance.eachLayer(layer => {
+      if (layer instanceof L.TileLayer) baseLoaded = true;
+    });
+    if (!baseLoaded) {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; CartoDB &copy; OpenStreetMap',
+        subdomains: 'abcd',
+        maxZoom: 20
+      }).addTo(mapInstance);
+    }
+
+    if (cachedLocations.length === 0) return;
+
+    const latLons = [];
+    const clusterGroup = L.markerClusterGroup({
+      spiderfyOnMaxZoom: true,
+      showCoverageOnHover: false,
+      zoomToBoundsOnClick: true
+    });
+    const heatPoints = [];
+
+    cachedLocations.forEach(loc => {
+      if (!loc.lat || !loc.lon) return;
+      latLons.push([loc.lat, loc.lon]);
+      const col = colors[loc.level] || colors.Normal;
+      const prob = loc.probability != null ? (loc.probability * 100).toFixed(1) + '%' : 'N/A';
+
+      const popupContent = `
+        <div style="color:#111827; font-family:'Segoe UI', sans-serif; min-width:180px; padding:2px;">
+          <strong style="font-size:13px; display:block; margin-bottom:4px;">🌆 ${loc.city}</strong>
+          <div style="font-size:11px; margin-bottom:2px;">Country: <strong>${loc.country || '—'}</strong></div>
+          <div style="font-size:11px; margin-bottom:2px;">Disease: <strong>${loc.disease || '—'}</strong></div>
+          <div style="font-size:11px; margin-bottom:2px;">Current Alert: <strong style="color:${col};">${loc.level || 'Normal'}</strong></div>
+          <div style="font-size:11px; margin-bottom:2px;">Fusion Score: <strong>${loc.score || 0} pts</strong></div>
+          <div style="font-size:11px; margin-bottom:2px;">Weekly Visits: <strong>${loc.visits || 0} cases</strong></div>
+          <div style="font-size:11px; margin-bottom:4px;">Outbreak Prob: <strong style="color:${loc.probability >= 0.28 ? '#EF4444' : '#111827'};">${prob}</strong></div>
+          <div style="font-size:9px; color:#6B7280; border-top:1px solid #E5E7EB; padding-top:4px; margin-top:4px;">Week: ${loc.week || '—'}</div>
+        </div>
+      `;
+
+      const customPulseIcon = L.divIcon({
+        className: 'custom-pulse-marker',
+        html: `
+          <div style="position:relative; width:16px; height:16px; display:flex; align-items:center; justify-content:center;">
+            <div style="background-color:${col}; width:8px; height:8px; border-radius:50%; box-shadow:0 0 6px ${col}; border:1px solid #FFFFFF; z-index:2; position:absolute;"></div>
+            <div style="background-color:${col}; opacity:0.4; width:16px; height:16px; border-radius:50%; animation:pulseRing 2s infinite; position:absolute; z-index:1;"></div>
+          </div>
+        `,
+        iconSize: [16, 16],
+        iconAnchor: [8, 8]
+      });
+
+      if (mapMode === 'pulse') {
+        const marker = L.marker([loc.lat, loc.lon], { icon: customPulseIcon }).addTo(mapInstance);
+        marker.bindPopup(popupContent);
+
+        const circleRadius = loc.level === 'Emergency' ? 50000 : loc.level === 'Warning' ? 30000 : loc.level === 'Watch' ? 15000 : 5000;
+        L.circle([loc.lat, loc.lon], {
+          radius: circleRadius,
+          fillColor: col,
+          color: col,
+          weight: 1,
+          opacity: 0.15,
+          fillOpacity: 0.05
+        }).addTo(mapInstance);
+      } else if (mapMode === 'cluster') {
+        const marker = L.circleMarker([loc.lat, loc.lon], {
+          radius: loc.level === 'Emergency' ? 10 : loc.level === 'Warning' ? 8 : 6,
+          fillColor: col,
+          color: '#FFFFFF',
+          weight: 1,
+          opacity: 0.8,
+          fillOpacity: 0.7
+        });
+        marker.bindPopup(popupContent);
+        clusterGroup.addLayer(marker);
+      } else if (mapMode === 'heat') {
+        const intensity = loc.level === 'Emergency' ? 1.0 : loc.level === 'Warning' ? 0.7 : loc.level === 'Watch' ? 0.4 : 0.1;
+        heatPoints.push([loc.lat, loc.lon, intensity]);
+      }
+    });
+
+    if (mapMode === 'cluster') {
+      mapInstance.addLayer(clusterGroup);
+    } else if (mapMode === 'heat') {
+      L.heatLayer(heatPoints, {
+        radius: 20,
+        blur: 15,
+        maxZoom: 10,
+        gradient: { 0.2: '#3B82F6', 0.5: '#F59E0B', 0.8: '#EF4444' }
+      }).addTo(mapInstance);
+    }
+
+    if (latLons.length > 0) {
+      mapInstance.fitBounds(latLons, { padding: [30, 30] });
+    }
+  }
+
+  // Bind events and load dashboard
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadPredictionRunsList();
+    await loadExecutiveSummary();
+    
+    document.getElementById('mode-selector').addEventListener('change', (e) => {
+      localStorage.setItem('selectedDataSource', e.target.value);
+      loadExecutiveSummary();
+    });
+    document.getElementById('refresh-dashboard-btn').addEventListener('click', async () => {
+      await loadPredictionRunsList();
+      await loadExecutiveSummary();
+    });
+  });
+
+</script>
+{% endblock %}

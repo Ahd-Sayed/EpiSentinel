@@ -1,0 +1,37 @@
+{
+  "scenarios_detected": "12/12 (100%)",
+  "average_lead_time_weeks": 5.04,
+  "average_detection_rate_during_outbreak": 0.972,
+  "alert_level_counts_at_peak": {
+    "Warning": 10,
+    "Watch": 2,
+    "Emergency": 0,
+    "Normal": 0
+  },
+  "fusion_system": {
+    "weights": {
+      "Isolation_Forest": 1,
+      "DBSCAN": 2,
+      "LSTM": 2
+    },
+    "thresholds": {
+      "Watch": "1-2 points",
+      "Warning": "3 points",
+      "Emergency": "4-5 points"
+    },
+    "note": "DBSCAN excluded from the binary scenario-validation score due to a threshold-portability limitation discovered when re-clustering narrow time windows (see report limitations section). Used as descriptive signal only in that specific validation."
+  },
+  "known_limitations": [
+    "9 low-signal diseases (incl. Mpox, Typhoid fever) excluded from LSTM training due to insufficient positive examples -> those 2 of 12 scenarios rely on IF only, capping them at Watch level.",
+    "DBSCAN's absolute score threshold (635.89) was calibrated on the full test-period clustering context and is not directly portable to narrower scenario-specific clustering windows -- a methodological property of density-based clustering, not a data quality issue.",
+    "Kano/Meningitis scenario had a very short lead time (0.29 weeks) -- flagged for discussion in the report.",
+    "LSTM's own held-out test metrics: F1=0.644, PR-AUC=0.567 (single-week-ahead target).",
+    "DBSCAN's own held-out test metrics: ROC-AUC=0.921, FPR=0.014, Precision=0.489, Recall=0.460.",
+    "Isolation Forest's own held-out test metrics: F1=0.123, but delivers the longest genuine early-warning lead time (~35 days average) of the three models."
+  ],
+  "overall_weekly_alert_precision": {
+    "Watch": 0.0025,
+    "Warning": 0.3871,
+    "Emergency": 0.9
+  }
+}

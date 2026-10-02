@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="EpiGuard Africa — AI-powered epidemic early-warning intelligence dashboard."/>
+  <title>{% block title %}EpiGuard Africa{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"/>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='20' fill='%236C63FF'/></svg>"/>
+  <style>
+    /* User Profile section */
+    .sidebar-user {
+      padding: 16px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .user-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #6C63FF;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .user-details {
+      display: flex;
+      flex-direction: column;
+    }
+    .user-name {
+      font-weight: 600;
+      color: #EEF2FF;
+      font-size: 13px;
+    }
+    .user-role {
+      font-size: 10px;
+      color: #8B95A7;
+      font-weight: 500;
+    }
+
+    /* Toast styles */
+    .custom-toast {
+      background: rgba(15, 23, 42, 0.95);
+      border-left: 4px solid #6C63FF;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      color: #EEF2FF;
+      padding: 12px 16px;
+      border-radius: 6px;
+      box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 280px;
+      max-width: 380px;
+      animation: slideIn 0.3s ease-out forwards;
+    }
+    .custom-toast.Emergency { border-left-color: #EF4444; }
+    .custom-toast.Warning { border-left-color: #F59E0B; }
+    .custom-toast.Watch { border-left-color: #3B82F6; }
+    .custom-toast.Success { border-left-color: #10B981; }
+
+    .toast-icon { font-size: 16px; }
+    .toast-body { flex-grow: 1; }
+    .toast-title { font-weight: 700; font-size: 12px; }
+    .toast-msg { font-size: 11px; color: #8B95A7; margin-top: 2px; }
+    .toast-close { cursor: pointer; color: #5A6578; font-size: 14px; font-weight: bold; background: none; border: none; }
+    .toast-close:hover { color: #EEF2FF; }
+
+    @keyframes slideIn {
+      from { transform: translateX(120%); opacity: 0; }
+      to { transform: translateX(0); opacity: 1; }
+    }
+
+    /* Global search dropdown */
+    .search-results-dropdown {
+      display: none;
+      position: absolute;
+      top: 100%;
+      left: 0;
+      right: 0;
+      background: #0F172A;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+      z-index: 9999;
+      max-height: 280px;
+      overflow-y: auto;
+      padding: 5px 0;
+    }
+    .search-item {
+      padding: 8px 12px;
+      cursor: pointer;
+      font-size: 12px;
+      color: #8B95A7;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+      display: flex;
+      justify-content: space-between;
+    }
+    .search-item:hover {
+      background: rgba(108, 99, 255, 0.15);
+      color: #EEF2FF;
+    }
+    .search-item-cat {
+      font-size: 9px;
+      text-transform: uppercase;
+      color: #6C63FF;
+      font-weight: 700;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ TOP NAVBAR HEADER ═══════════════════════════════════════════════ -->
+<header class="main-header" id="main-header">
+  <div class="header-container">
+    <!-- Logo -->
+    <div class="header-logo">
+      <div class="logo-icon-wrap">
+        <div class="logo-icon-inner"></div>
+        <div class="logo-ring-1"></div>
+        <div class="logo-ring-2"></div>
+      </div>
+      <div class="logo-text">
+        <h1>EpiGuard<span class="logo-accent">Africa</span></h1>
+        <p>Outbreak Intelligence</p>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="header-nav" id="header-nav">
+      <a href="{{ url_for('overview.index') }}"
+         class="nav-link nav-overview {% if active=='overview' %}active{% endif %}">
+        <span class="nav-icon-box nav-icon-purple">
+          <span class="icon-overview">
+            <span></span><span></span><span></span><span></span>
+          </span>
+        </span>
+        <span class="nav-text">Overview</span>
+      </a>
+
+      <a href="{{ url_for('alerts.alerts_page') }}"
+         class="nav-link nav-alerts {% if active=='alerts' %}active{% endif %}">
+        <span class="nav-icon-box nav-icon-red">
+          <span class="icon-alerts"></span>
+        </span>
+        <span class="nav-text">Alerts Explorer</span>
+      </a>
+
+      <a href="{{ url_for('scenarios.scenarios_page') }}"
+         class="nav-link nav-scenarios {% if active=='scenarios' %}active{% endif %}">
+        <span class="nav-icon-box nav-icon-green">
+          <span class="icon-scenarios"></span>
+        </span>
+        <span class="nav-text">Scenarios</span>
+      </a>
+
+      <a href="{{ url_for('models.models_page') }}"
+         class="nav-link nav-models {% if active=='models' %}active{% endif %}">
+        <span class="nav-icon-box nav-icon-amber">
+          <span class="icon-models">
+            <span></span><span></span><span></span>
+          </span>
+        </span>
+        <span class="nav-text">Model Performance</span>
+      </a>
+
+      <a href="{{ url_for('explorer.explorer_page') }}"
+         class="nav-link nav-explorer {% if active=='explorer' %}active{% endif %}">
+        <span class="nav-icon-box nav-icon-cyan">
+          <span class="icon-explorer"></span>
+        </span>
+        <span class="nav-text">Data Explorer</span>
+      </a>
+
+      <a href="{{ url_for('explorer.upload_page') }}"
+         class="nav-link nav-upload {% if active=='upload' %}active{% endif %}">
+        <span class="nav-icon-box nav-icon-purple">
+          <span style="font-size: 13px;">📤</span>
+        </span>
+        <span class="nav-text">Upload &amp; Runs</span>
+      </a>
+
+
+      <a href="{{ url_for('explorer.analytics_page') }}"
+         class="nav-link {% if active=='analytics' %}active{% endif %}">
+        <span class="nav-icon-box" style="background:rgba(0,212,255,0.1);">
+          <span style="font-size: 13px;">📊</span>
+        </span>
+        <span class="nav-text">Analytics</span>
+      </a>
+    </nav>
+
+    <!-- User Section & Hamburger -->
+    <div class="header-right-controls">
+      {% if current_user.is_authenticated %}
+
+      <!-- Notification Bell -->
+      <div style="position:relative; display:inline-block;" id="notif-bell-wrap">
+        <button id="notif-bell-btn" onclick="toggleNotifPanel()" style="background:none; border:none; cursor:pointer; padding:6px; position:relative; color:#8B95A7;" title="Notifications">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px;">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span id="notif-badge" style="display:none; position:absolute; top:0; right:0; background:#EF4444; color:#fff; border-radius:50%; width:14px; height:14px; font-size:8px; font-weight:700; line-height:14px; text-align:center;">0</span>
+        </button>
+        <div id="notif-panel" style="display:none; position:absolute; right:0; top:calc(100% + 8px); width:320px; background:#0F172A; border:1px solid rgba(255,255,255,0.1); border-radius:8px; box-shadow:0 8px 24px rgba(0,0,0,0.6); z-index:9999;">
+          <div style="padding:12px 16px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:center;">
+            <span style="font-weight:700; color:#EEF2FF; font-size:13px;">Notifications</span>
+            <button onclick="markAllRead()" style="background:none; border:none; color:#6C63FF; font-size:11px; cursor:pointer;">Mark all read</button>
+          </div>
+          <div id="notif-list" style="max-height:280px; overflow-y:auto; padding:8px 0;">
+            <div style="padding:20px; text-align:center; color:#5A6578; font-size:12px;">Loading...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="header-user-menu">
+        <div class="user-profile-trigger">
+          <div class="user-avatar">
+            {{ current_user.username[0]|upper }}
+          </div>
+          <span class="user-name-trigger">{{ current_user.username }}</span>
+          <span class="dropdown-arrow">▼</span>
+        </div>
+        <div class="user-dropdown">
+          <div class="dropdown-user-info">
+            <span class="dropdown-username">{{ current_user.username }}</span>
+            <span class="dropdown-role">Role: <span style="color: var(--accent); font-weight:600;">{{ current_user.role }}</span></span>
+          </div>
+          <div class="dropdown-divider"></div>
+
+          <a href="{{ url_for('explorer.compare_page') }}" class="dropdown-logout-btn" style="color:#EEF2FF;">
+            <span>⇄</span><span>Compare Runs</span>
+          </a>
+          <a href="{{ url_for('explorer.warning_center_page') }}" class="dropdown-logout-btn" style="color:#EEF2FF;">
+            <span>⚠️</span><span>Warning Center</span>
+          </a>
+          <div class="dropdown-divider"></div>
+          <a href="{{ url_for('auth.logout') }}" class="dropdown-logout-btn">
+            <span class="logout-icon">↩</span>
+            <span>Sign Out</span>
+          </a>
+        </div>
+      </div>
+      {% endif %}
+
+      <button class="hamburger-btn" id="hamburger-btn" aria-label="Toggle navigation">
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+        <span class="hamburger-bar"></span>
+      </button>
+      <!-- Settings Gear -->
+      <button id="settings-btn" onclick="toggleSettings()" style="background:none; border:none; cursor:pointer; padding:6px; color:#8B95A7;" title="Dashboard Settings" aria-label="Dashboard Settings">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:17px;height:17px;">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+      </button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ MAIN CONTENT ══════════════════════════════════════════════════════ -->
+<div class="main-content">
+
+  <!-- Topbar — Redesigned Symmetrical Layout -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <h2>{% block page_title %}Dashboard{% endblock %}</h2>
+      <p>{% block page_subtitle %}Epidemic Early-Warning System{% endblock %}</p>
+    </div>
+
+    <div class="topbar-center">
+      <div class="stats-capsule">
+        <div class="stat-item stat-cities">
+          <span class="stat-dot dot-blue"></span>
+          <span class="stat-text"><strong>64</strong> Cities</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item stat-diseases">
+          <span class="stat-dot dot-purple"></span>
+          <span class="stat-text"><strong>9</strong> Diseases</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item stat-records">
+          <span class="stat-dot dot-green"></span>
+          <span class="stat-text"><strong>926K+</strong> Records</span>
+        </div>
+        <div class="stat-divider"></div>
+        <div class="stat-item stat-live">
+          <span class="stat-pulse"></span>
+          <span class="stat-text">Live</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="topbar-right">
+      <!-- Global Search -->
+      <div class="search-box-wrapper">
+        <svg class="search-box-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        <input type="text" id="global-search-input" placeholder="OmniSearch..." />
+        <span class="search-box-shortcut">Ctrl+K</span>
+        <div id="search-results-dropdown" class="search-results-dropdown"></div>
+      </div>
+      
+      <!-- Auto Refresh -->
+      <div class="refresh-box-wrapper" title="Auto Refresh Rate">
+        <svg class="refresh-box-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"></path></svg>
+        <select id="auto-refresh-select">
+          <option value="0">Off</option>
+          <option value="30">30s</option>
+          <option value="60">60s</option>
+          <option value="300">5m</option>
+        </select>
+        <svg class="select-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </div>
+
+      <!-- Last Updated -->
+      <div class="updated-box-wrapper">
+        <svg class="clock-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+        <div class="updated-time-info">
+          <span class="updated-label">Updated</span>
+          <strong id="last-updated">—</strong>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="page-body">
+    {% block content %}{% endblock %}
+  </main>
+
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container" style="position: fixed; bottom: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px;"></div>
+
+<!-- ─── Settings Panel ──────────────────────────────────────────────── -->
+<div class="settings-panel" id="settings-panel" role="dialog" aria-label="Dashboard Settings">
+  <div style="padding:16px 20px; border-bottom:1px solid rgba(255,255,255,0.07); display:flex; justify-content:space-between; align-items:center;">
+    <span style="font-weight:700; color:#EEF2FF; font-size:14px;">⚙️ Dashboard Settings</span>
+    <button onclick="toggleSettings()" style="background:none; border:none; color:#8B95A7; cursor:pointer; font-size:18px;" aria-label="Close settings">✕</button>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Default Landing Page</div>
+    <select id="setting-default-page" class="form-select" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); color:#EEF2FF; font-size:12px; border-radius:6px;" onchange="saveSetting('default_page', this.value)">
+      <option value="/">Executive Dashboard</option>
+      <option value="/upload">Upload & Runs</option>
+      <option value="/analytics">Analytics</option>
+      <option value="/explorer">Data Explorer</option>
+    </select>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Auto-Refresh Interval</div>
+    <select id="setting-refresh" class="form-select" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); color:#EEF2FF; font-size:12px; border-radius:6px;" onchange="saveSetting('refresh_interval', this.value)">
+      <option value="0">Off</option>
+      <option value="15">15 seconds</option>
+      <option value="30" selected>30 seconds</option>
+      <option value="60">1 minute</option>
+      <option value="300">5 minutes</option>
+    </select>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Map Style</div>
+    <select id="setting-map" class="form-select" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); color:#EEF2FF; font-size:12px; border-radius:6px;" onchange="saveSetting('map_style', this.value)">
+      <option value="dark" selected>Dark (Carto)</option>
+      <option value="satellite">Satellite</option>
+      <option value="topo">Topographic</option>
+    </select>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Visible KPI Cards</div>
+    <div style="display:flex; flex-direction:column; gap:6px; font-size:12px; color:#EEF2FF;">
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" checked onchange="saveSetting('kpi_patients', this.checked)"> Total Patients</label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" checked onchange="saveSetting('kpi_visits', this.checked)"> Total Visits</label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" checked onchange="saveSetting('kpi_alerts', this.checked)"> Alert Counts</label>
+      <label style="display:flex; align-items:center; gap:8px; cursor:pointer;"><input type="checkbox" checked onchange="saveSetting('kpi_emergencies', this.checked)"> Emergencies</label>
+    </div>
+  </div>
+  <div class="settings-section">
+    <div class="settings-label">Table Density</div>
+    <select id="setting-density" class="form-select" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); color:#EEF2FF; font-size:12px; border-radius:6px;" onchange="saveSetting('density', this.value)">
+      <option value="comfortable" selected>Comfortable</option>
+      <option value="compact">Compact</option>
+    </select>
+  </div>
+  <div class="settings-section" style="border-bottom:none;">
+    <button class="btn btn-outline-danger btn-sm w-100 mt-2" onclick="resetSettings()" style="font-size:11px;">🔄 Reset to Defaults</button>
+    <div style="font-size:10px; color:#5A6578; text-align:center; margin-top:8px;">Settings saved in browser storage</div>
+  </div>
+</div>
+
+<!-- ─── Global XAI Drawer ───────────────────────────────────────────── -->
+<div class="xai-drawer-overlay" id="xai-overlay" onclick="closeXAIDrawer()"></div>
+<div class="xai-drawer" id="xai-drawer" role="dialog" aria-label="Explainability Panel">
+  <div class="xai-drawer-header">
+    <div>
+      <div style="font-size:14px; font-weight:700; color:#EEF2FF;">🧠 Explainable AI — Fusion Reasoning</div>
+      <div style="font-size:11px; color:#8B95A7; margin-top:2px;" id="xai-drawer-subtitle">Row details</div>
+    </div>
+    <button onclick="closeXAIDrawer()" style="background:none; border:none; color:#8B95A7; font-size:20px; cursor:pointer;" aria-label="Close XAI drawer">✕</button>
+  </div>
+  <div class="xai-drawer-body" id="xai-drawer-body">
+    <!-- Dynamically populated -->
+  </div>
+</div>
+
+<!-- Scripts -->
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}?v=1.0.2"></script>
+<script>
+  // ── Global Search Handling ───────────────────────────────────────────
+  (function() {
+    const input = document.getElementById('global-search-input');
+    const dropdown = document.getElementById('search-results-dropdown');
+    if (!input || !dropdown) return;
+    
+    let timer = null;
+    input.addEventListener('input', () => {
+      clearTimeout(timer);
+      const query = input.value.trim();
+      if (query.length < 2) {
+        dropdown.style.display = 'none';
+        return;
+      }
+      timer = setTimeout(async () => {
+        try {
+          const r = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+          const res = await r.json();
+          if (res.success) {
+            renderResults(res.results);
+          }
+        } catch(e) {
+          console.error(e);
+        }
+      }, 300);
+    });
+    
+    document.addEventListener('click', (e) => {
+      if (e.target !== input && !dropdown.contains(e.target)) {
+        dropdown.style.display = 'none';
+      }
+    });
+
+    // Keyboard shortcut Ctrl+K
+    document.addEventListener('keydown', (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        input.focus();
+        input.select();
+      }
+      if (e.key === 'Escape') { dropdown.style.display = 'none'; input.blur(); }
+    });
+
+    function renderResults(results) {
+      dropdown.innerHTML = '';
+      if (!results || results.length === 0) {
+        dropdown.innerHTML = '<div style="padding:14px; color:#5A6578; font-size:12px; text-align:center;">No results found</div>';
+        dropdown.style.display = 'block';
+        return;
+      }
+
+      // Group by type
+      const groups = {};
+      results.forEach(r => {
+        if (!groups[r.type]) groups[r.type] = [];
+        groups[r.type].push(r);
+      });
+
+      const groupLabels = { location: '🌆 Locations', run: '📋 Runs', warning: '⚠️ Warnings', notification: '🔔 Notifications' };
+      const ALERT_COLORS = { Emergency: '#EF4444', Warning: '#F59E0B', Watch: '#3B82F6', Normal: '#6B7280' };
+
+      Object.entries(groups).forEach(([type, items]) => {
+        const groupLabel = document.createElement('div');
+        groupLabel.className = 'search-result-group-label';
+        groupLabel.textContent = groupLabels[type] || type;
+        dropdown.appendChild(groupLabel);
+
+        items.forEach(item => {
+          const el = document.createElement('div');
+          el.className = 'search-item';
+          const alertDot = item.alert ? `<span style="width:6px;height:6px;border-radius:50%;background:${ALERT_COLORS[item.alert]||'#6B7280'};display:inline-block;margin-right:4px;"></span>` : '';
+          el.innerHTML = `
+            <div style="display:flex;align-items:flex-start;gap:8px;">
+              <span class="search-item-icon">${item.icon || '•'}</span>
+              <div style="flex:1;min-width:0;">
+                <div class="search-item-label">${alertDot}${item.label}</div>
+                <div class="search-item-meta">${item.meta || ''}</div>
+              </div>
+            </div>`;
+          el.addEventListener('click', () => { window.location.href = item.url || '#'; dropdown.style.display = 'none'; input.value = ''; });
+          dropdown.appendChild(el);
+        });
+      });
+      dropdown.style.display = 'block';
+    }
+  })();
+
+  // ── Auto Refresh Handling ────────────────────────────────────────────
+  (function() {
+    const select = document.getElementById('auto-refresh-select');
+    if (!select) return;
+    
+    let intervalId = null;
+    
+    function startRefresh(seconds) {
+      clearInterval(intervalId);
+      if (seconds <= 0) return;
+      intervalId = setInterval(() => {
+        console.log(`Auto refreshing dashboard...`);
+        // If Plotly charts are loaded, re-execute the load functions
+        if (window.loadOverview) window.loadOverview();
+        if (window.loadAlerts) window.loadAlerts();
+        if (window.loadScenarios) window.loadScenarios();
+        if (window.loadModelsSummary) window.loadModelsSummary();
+      }, seconds * 1000);
+    }
+    
+    // Save to localStorage to persist state
+    const saved = localStorage.getItem('auto_refresh_sec') || '0';
+    select.value = saved;
+    startRefresh(parseInt(saved));
+    
+    select.addEventListener('change', () => {
+      const val = select.value;
+      localStorage.setItem('auto_refresh_sec', val);
+      startRefresh(parseInt(val));
+      showToast('Refresh Set', `Auto-refresh interval set to ${val === '0' ? 'Off' : val + 's'}`, 'Success');
+    });
+  })();
+
+  // ── Global Toast Notification Handler ────────────────────────────────
+  window.showToast = function(title, msg, category="Watch") {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `custom-toast ${category}`;
+    
+    let icon = '🔔';
+    if (category === 'Emergency') icon = '🚨';
+    else if (category === 'Warning') icon = '⚠️';
+    else if (category === 'Success') icon = '✅';
+    
+    toast.innerHTML = `
+      <span class="toast-icon">${icon}</span>
+      <div class="toast-body">
+        <div class="toast-title">${title}</div>
+        <div class="toast-msg">${msg}</div>
+      </div>
+      <button class="toast-close">&times;</button>
+    `;
+    
+    toast.querySelector('.toast-close').addEventListener('click', () => {
+      toast.style.animation = 'slideOut 0.2s ease-in forwards';
+      setTimeout(() => toast.remove(), 200);
+    });
+    
+    container.appendChild(toast);
+    
+    // Auto remove after 6 seconds
+    setTimeout(() => {
+      if (toast.parentNode) {
+        toast.style.animation = 'slideOut 0.2s ease-in forwards';
+        setTimeout(() => toast.remove(), 200);
+      }
+    }, 6000);
+  };
+
+  // ── Mobile Hamburger & User Dropdown Handlers ───────────────────────
+  (function() {
+    const hamburger = document.getElementById('hamburger-btn');
+    const nav = document.getElementById('header-nav');
+    const userTrigger = document.querySelector('.user-profile-trigger');
+    const userMenu = document.querySelector('.header-user-menu');
+
+    if (hamburger && nav) {
+      hamburger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        nav.classList.toggle('open');
+        hamburger.classList.toggle('active');
+        if (userMenu) userMenu.classList.remove('active');
+      });
+    }
+
+    if (userTrigger && userMenu) {
+      userTrigger.addEventListener('click', function(e) {
+        e.stopPropagation();
+        userMenu.classList.toggle('active');
+        if (nav) {
+          nav.classList.remove('open');
+          if (hamburger) hamburger.classList.remove('active');
+        }
+      });
+    }
+
+    document.addEventListener('click', function(e) {
+      if (nav && !nav.contains(e.target) && hamburger && !hamburger.contains(e.target)) {
+        nav.classList.remove('open');
+        hamburger.classList.remove('active');
+      }
+      if (userMenu && !userMenu.contains(e.target)) {
+        userMenu.classList.remove('active');
+      }
+    });
+    
+    // ── Keyboard shortcut for focusing OmniSearch ────────────────────────
+    document.addEventListener('keydown', function(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        const input = document.getElementById('global-search-input');
+        if (input) {
+          input.focus();
+          input.select();
+        }
+      }
+    });
+  })();
+</script>
+
+<!-- ─── Notification Bell Logic ─────────────────────────────────── -->
+<script>
+  const NOTIF_COLORS = { Success:'#10B981', Information:'#3B82F6', Warning:'#F59E0B', Emergency:'#EF4444' };
+
+  function toggleNotifPanel() {
+    const panel = document.getElementById('notif-panel');
+    if (panel.style.display === 'none') {
+      panel.style.display = 'block';
+      loadNotifications();
+    } else {
+      panel.style.display = 'none';
+    }
+  }
+
+  // Close when clicking outside
+  document.addEventListener('click', e => {
+    const wrap = document.getElementById('notif-bell-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      const p = document.getElementById('notif-panel');
+      if (p) p.style.display = 'none';
+    }
+  });
+
+  async function loadNotifications() {
+    try {
+      const r = await fetch('/api/notifications');
+      const d = await r.json();
+      if (!d.success) return;
+
+      const badge = document.getElementById('notif-badge');
+      if (d.unread_count > 0) {
+        badge.style.display = 'flex';
+        badge.style.alignItems = 'center';
+        badge.style.justifyContent = 'center';
+        badge.textContent = d.unread_count > 9 ? '9+' : d.unread_count;
+      } else {
+        badge.style.display = 'none';
+      }
+
+      const list = document.getElementById('notif-list');
+      if (!d.notifications || d.notifications.length === 0) {
+        list.innerHTML = '<div style="padding:20px; text-align:center; color:#5A6578; font-size:12px;">No notifications</div>';
+        return;
+      }
+
+      list.innerHTML = d.notifications.map(n => `
+        <div onclick="markRead(${n.id})" style="padding:10px 16px; border-bottom:1px solid rgba(255,255,255,0.04); cursor:pointer; ${n.is_read ? 'opacity:0.55;' : ''}" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='none'">
+          <div style="display:flex; gap:8px; align-items:flex-start;">
+            <div style="width:6px; height:6px; border-radius:50%; background:${NOTIF_COLORS[n.category]||'#6C63FF'}; margin-top:5px; flex-shrink:0;"></div>
+            <div style="flex:1;">
+              <div style="font-size:12px; font-weight:${n.is_read ? '400':'700'}; color:#EEF2FF;">${n.title}</div>
+              <div style="font-size:11px; color:#8B95A7; margin-top:2px;">${n.message.substring(0,90)}${n.message.length > 90 ? '…':''}</div>
+              <div style="font-size:10px; color:#5A6578; margin-top:4px;">${n.time}</div>
+            </div>
+          </div>
+        </div>
+      `).join('');
+    } catch(e) { console.error(e); }
+  }
+
+  async function markRead(id) {
+    const fd = new FormData();
+    fd.append('id', id);
+    await fetch('/api/notifications/read', { method: 'POST', body: fd });
+    loadNotifications();
+  }
+
+  async function markAllRead() {
+    await fetch('/api/notifications/read', { method: 'POST', body: new FormData() });
+    loadNotifications();
+  }
+
+  // Poll unread count every 30 seconds
+  if (document.getElementById('notif-badge')) {
+    setInterval(() => {
+      fetch('/api/notifications')
+        .then(r => r.json())
+        .then(d => {
+          if (d.success) {
+            const badge = document.getElementById('notif-badge');
+            if (d.unread_count > 0) {
+              badge.style.display = 'flex';
+              badge.style.alignItems = 'center';
+              badge.style.justifyContent = 'center';
+              badge.textContent = d.unread_count > 9 ? '9+' : d.unread_count;
+            } else {
+              badge.style.display = 'none';
+            }
+          }
+        }).catch(() => {});
+    }, 30000);
+  }
+</script>
+
+<!-- ─── Settings Panel Logic ─────────────────────────────────────── -->
+<script>
+  const SETTINGS_KEY = 'episentinel_settings';
+
+  function loadSettings() {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+      if (saved.default_page) document.getElementById('setting-default-page').value = saved.default_page;
+      if (saved.refresh_interval) document.getElementById('setting-refresh').value = saved.refresh_interval;
+      if (saved.map_style) document.getElementById('setting-map').value = saved.map_style;
+    } catch(e) {}
+  }
+
+  function saveSetting(key, value) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+      saved[key] = value;
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(saved));
+    } catch(e) {}
+  }
+
+  function getSetting(key, defaultVal) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+      return key in saved ? saved[key] : defaultVal;
+    } catch(e) { return defaultVal; }
+  }
+
+  function resetSettings() {
+    localStorage.removeItem(SETTINGS_KEY);
+    loadSettings();
+    showToast('Settings', 'Preferences reset to defaults.', 'Success');
+  }
+
+  function toggleSettings() {
+    const panel = document.getElementById('settings-panel');
+    if (panel) panel.classList.toggle('open');
+  }
+
+  document.addEventListener('DOMContentLoaded', loadSettings);
+</script>
+
+<!-- ─── Global XAI Drawer Logic ─────────────────────────────────── -->
+<script>
+  function openXAIDrawer(row) {
+    const drawer = document.getElementById('xai-drawer');
+    const overlay = document.getElementById('xai-overlay');
+    const body = document.getElementById('xai-drawer-body');
+    const subtitle = document.getElementById('xai-drawer-subtitle');
+
+    if (!drawer || !body) return;
+
+    subtitle.textContent = `${row.city} — ${row.disease} — Week ${row.week}`;
+
+    const ifPts    = row.if_flag    ? 1 : 0;
+    const dbPts    = row.dbscan_flag ? 2 : 0;
+    const lstmPts  = row.lstm_flag  ? 2 : 0;
+    const total    = row.points;
+    const prob     = row.lstm_probability != null ? (row.lstm_probability * 100).toFixed(1) + '%' : 'N/A';
+    const LEVEL_COLORS = { Emergency: '#EF4444', Warning: '#F59E0B', Watch: '#3B82F6', Normal: '#6B7280' };
+    const levelColor = LEVEL_COLORS[row.alert_level] || '#6B7280';
+
+    // Decision tree visual
+    const treeHtml = `
+      <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:16px; margin-bottom:16px;">
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:12px; letter-spacing:0.5px;">Fusion Decision Tree</div>
+
+        <!-- Root: patient group -->
+        <div class="dtree-node root" style="background:rgba(108,99,255,0.1); border:1px solid rgba(108,99,255,0.2);">
+          <div class="dtree-node-icon" style="background:rgba(108,99,255,0.2);">📍</div>
+          <div>
+            <div style="font-weight:700; color:#EEF2FF; font-size:12px;">${row.city} / ${row.disease}</div>
+            <div style="font-size:10px; color:#8B95A7;">Week ${row.week} &bull; ${row.country}</div>
+          </div>
+        </div>
+
+        <div class="dtree-connector">
+          <!-- IF -->
+          <div class="dtree-node" style="background:${row.if_flag ? 'rgba(239,68,68,0.08)':'rgba(255,255,255,0.02)'}; border:1px solid ${row.if_flag ? 'rgba(239,68,68,0.25)':'rgba(255,255,255,0.06)'};">
+            <div class="dtree-node-icon" style="background:${row.if_flag ? 'rgba(239,68,68,0.15)':'rgba(255,255,255,0.05)'};">🌲</div>
+            <div style="flex:1;">
+              <div style="font-weight:600; color:#EEF2FF; font-size:11px;">Isolation Forest</div>
+              <div style="font-size:10px; color:#8B95A7; margin-top:1px;">${row.if_flag ? 'Anomaly detected — visit profile exceeds baseline' : 'Within normal parameters — no anomaly'}</div>
+            </div>
+            <div style="font-weight:800; font-size:13px; color:${row.if_flag ? '#EF4444' : '#6B7280'};">+${ifPts}</div>
+          </div>
+
+          <!-- DBSCAN -->
+          <div class="dtree-node" style="background:${row.dbscan_flag ? 'rgba(245,158,11,0.08)':'rgba(255,255,255,0.02)'}; border:1px solid ${row.dbscan_flag ? 'rgba(245,158,11,0.25)':'rgba(255,255,255,0.06)'};">
+            <div class="dtree-node-icon" style="background:${row.dbscan_flag ? 'rgba(245,158,11,0.15)':'rgba(255,255,255,0.05)'};">🔵</div>
+            <div style="flex:1;">
+              <div style="font-weight:600; color:#EEF2FF; font-size:11px;">DBSCAN Clustering</div>
+              <div style="font-size:10px; color:#8B95A7; margin-top:1px;">${row.dbscan_flag ? 'High-density patient cluster detected in region' : 'No significant density cluster — normal distribution'}</div>
+            </div>
+            <div style="font-weight:800; font-size:13px; color:${row.dbscan_flag ? '#F59E0B' : '#6B7280'};">+${dbPts} (×2)</div>
+          </div>
+
+          <!-- LSTM -->
+          <div class="dtree-node" style="background:${row.lstm_flag ? 'rgba(59,130,246,0.08)':'rgba(255,255,255,0.02)'}; border:1px solid ${row.lstm_flag ? 'rgba(59,130,246,0.25)':'rgba(255,255,255,0.06)'};">
+            <div class="dtree-node-icon" style="background:${row.lstm_flag ? 'rgba(59,130,246,0.15)':'rgba(255,255,255,0.05)'};">🧠</div>
+            <div style="flex:1;">
+              <div style="font-weight:600; color:#EEF2FF; font-size:11px;">LSTM Ensemble</div>
+              <div style="font-size:10px; color:#8B95A7; margin-top:1px;">Outbreak probability: <strong style="color:${row.lstm_probability >= 0.28 ? '#EF4444':'#8B95A7'};">${prob}</strong> (threshold 28%)</div>
+            </div>
+            <div style="font-weight:800; font-size:13px; color:${row.lstm_flag ? '#3B82F6' : '#6B7280'};">+${lstmPts} (×2)</div>
+          </div>
+
+          <!-- Result -->
+          <div class="dtree-node" style="background:rgba(${levelColor.replace('#','').match(/../g).map(h=>parseInt(h,16)).join(',')},0.12); border:2px solid ${levelColor}40; margin-top:8px;">
+            <div class="dtree-node-icon" style="background:${levelColor}22; font-size:16px;">⚡</div>
+            <div style="flex:1;">
+              <div style="font-size:10px; color:#8B95A7; font-weight:700; text-transform:uppercase;">Fusion Score</div>
+              <div style="font-weight:800; color:#EEF2FF; font-size:20px; line-height:1.2;">${ifPts} + ${dbPts} + ${lstmPts} = <span style="color:${levelColor};">${total} pts</span></div>
+            </div>
+            <div style="text-align:right;">
+              <div style="background:${levelColor}22; border:1px solid ${levelColor}44; border-radius:20px; padding:4px 12px; font-size:11px; font-weight:800; color:${levelColor};">${row.alert_level}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Patient Summary Section with Spinner -->
+      <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:16px; margin-bottom:16px;" id="xai-patient-summary">
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Clinical Patient Summary</div>
+        <div class="text-center py-2"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Warning Messages -->
+      <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:16px; margin-bottom:16px;" id="xai-warnings-box">
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Warning Messages</div>
+        <div style="font-size:11px; color:#8B95A7;">Scanning warnings...</div>
+      </div>
+
+      <div style="background:rgba(255,255,255,0.02); border-radius:8px; padding:14px; margin-bottom:12px;">
+        <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Model Confidence</div>
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;"><span style="color:#8B95A7;">Isolation Forest</span><span style="color:#EEF2FF; font-weight:700;">${row.if_flag ? 'High Anomaly' : 'Normal Range'}</span></div>
+            <div style="height:4px; background:rgba(255,255,255,0.06); border-radius:2px;"><div style="height:4px; border-radius:2px; background:#6C63FF; width:${row.if_flag ? '85' : '30'}%;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;"><span style="color:#8B95A7;">DBSCAN</span><span style="color:#EEF2FF; font-weight:700;">${row.dbscan_flag ? 'Cluster Confirmed' : 'No Cluster'}</span></div>
+            <div style="height:4px; background:rgba(255,255,255,0.06); border-radius:2px;"><div style="height:4px; border-radius:2px; background:#F59E0B; width:${row.dbscan_flag ? '90' : '20'}%;"></div></div>
+          </div>
+          <div>
+            <div style="display:flex; justify-content:space-between; font-size:11px; margin-bottom:3px;"><span style="color:#8B95A7;">LSTM ensemble</span><span style="color:#EEF2FF; font-weight:700;">${prob}</span></div>
+            <div style="height:4px; background:rgba(255,255,255,0.06); border-radius:2px;"><div style="height:4px; border-radius:2px; background:#3B82F6; width:${Math.min(100, (row.lstm_probability||0)*100).toFixed(0)}%;"></div></div>
+          </div>
+        </div>
+      </div>
+    `;
+
+    body.innerHTML = treeHtml;
+    drawer.classList.add('open');
+    if (overlay) { overlay.classList.add('open'); }
+
+    // Fetch Patient Visit Summary facts asynchronously
+    fetch(`/api/detail/${row.id}/summary`)
+      .then(r => r.json())
+      .then(res => {
+        const psBox = document.getElementById('xai-patient-summary');
+        if (!psBox) return;
+        if (res.success && res.total_visits > 0) {
+          const syms = res.top_symptoms.map(s => `<span class="badge bg-secondary" style="font-size:9px; font-weight:normal; margin-right:4px;">${s.symptom} (${s.percentage}%)</span>`).join('');
+          psBox.innerHTML = `
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Clinical Patient Summary</div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span style="color:#8B95A7;">Total Weekly Visits:</span><strong style="color:#EEF2FF;">${res.total_visits} visits</strong></div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:4px;"><span style="color:#8B95A7;">Average Age:</span><strong style="color:#EEF2FF;">${res.avg_age} years</strong></div>
+            <div style="display:flex; justify-content:space-between; font-size:12px; margin-bottom:6px;"><span style="color:#8B95A7;">Gender Split:</span><strong style="color:#EEF2FF;">M: ${res.genders.Male} | F: ${res.genders.Female}</strong></div>
+            <div style="font-size:11px; color:#8B95A7; margin-top:6px;">Top Presenting Symptoms:</div>
+            <div style="margin-top:4px;">${syms || 'None recorded'}</div>
+          `;
+        } else {
+          psBox.innerHTML = `
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Clinical Patient Summary</div>
+            <div style="font-size:11px; color:#8B95A7;">No matching visits detail in DB. Displaying aggregated cohort projection.</div>
+          `;
+        }
+      });
+
+    // Fetch warnings for run and filter for mentions of city/disease
+    fetch(`/api/run/${row.prediction_id}/warnings`)
+      .then(r => r.json())
+      .then(res => {
+        const warnBox = document.getElementById('xai-warnings-box');
+        if (!warnBox) return;
+        if (res.success && res.data && res.data.length > 0) {
+          const needle = row.city.toLowerCase();
+          const filtered = res.data.filter(w => w.value.toLowerCase().includes(needle) || w.type.toLowerCase().includes(needle));
+          if (filtered.length > 0) {
+            warnBox.innerHTML = `
+              <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Warning Messages</div>
+              <div style="display:flex; flex-direction:column; gap:6px;">
+                ${filtered.map(w => `<div style="font-size:11px; color:#F59E0B; border-left:2px solid #F59E0B; padding-left:6px;">${w.value}</div>`).join('')}
+              </div>
+            `;
+          } else {
+            warnBox.innerHTML = `
+              <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Warning Messages</div>
+              <div style="font-size:11px; color:#10B981;">✅ No pipeline anomalies or data warnings for this specific city.</div>
+            `;
+          }
+        } else {
+          warnBox.innerHTML = `
+            <div style="font-size:10px; font-weight:700; text-transform:uppercase; color:#8B95A7; margin-bottom:8px;">Warning Messages</div>
+            <div style="font-size:11px; color:#10B981;">✅ Run executed clean with no warnings.</div>
+          `;
+        }
+      });
+  }
+
+
+  function closeXAIDrawer() {
+    const drawer = document.getElementById('xai-drawer');
+    const overlay = document.getElementById('xai-overlay');
+    if (drawer) drawer.classList.remove('open');
+    if (overlay) overlay.classList.remove('open');
+  }
+
+  // ─── Animated counter utility ─────────────────────────────────
+  function animateCounter(element, target, duration = 800) {
+    const start = 0;
+    const increment = target / (duration / 16);
+    let current = start;
+    const timer = setInterval(() => {
+      current += increment;
+      if (current >= target) {
+        current = target;
+        clearInterval(timer);
+      }
+      element.textContent = Math.floor(current).toLocaleString();
+    }, 16);
+  }
+
+  // ─── showToast overrides to support more categories ───────────
+  function showToast(title, message, category = 'Success') {
+    const container = document.getElementById('toast-container');
+    if (!container) return;
+    const ICONS = { Success: '✅', Warning: '⚠️', Emergency: '🚨', Information: 'ℹ️', Watch: '👁️' };
+    const toast = document.createElement('div');
+    toast.className = `custom-toast ${category}`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `
+      <span class="toast-icon">${ICONS[category] || 'ℹ️'}</span>
+      <div class="toast-body">
+        <div class="toast-title">${title}</div>
+        <div class="toast-msg">${message}</div>
+      </div>
+      <button class="toast-close" onclick="this.parentElement.remove()" aria-label="Close">✕</button>
+    `;
+    container.appendChild(toast);
+    setTimeout(() => {
+      toast.style.transition = 'opacity 0.4s, transform 0.4s';
+      toast.style.opacity = '0';
+      toast.style.transform = 'translateX(30px)';
+      setTimeout(() => toast.remove(), 400);
+    }, 5000);
+  }
+</script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

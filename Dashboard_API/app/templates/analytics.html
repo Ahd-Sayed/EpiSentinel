@@ -1,0 +1,443 @@
+{% extends "base.html" %}
+{% block title %}Advanced Analytics — EpiSentinel Africa{% endblock %}
+{% block page_title %}Advanced Analytics Dashboard{% endblock %}
+{% block page_subtitle %}Deep-dive epidemiological intelligence: trends, distributions, growth rates, and model confidence{% endblock %}
+
+{% block content %}
+<!-- ─── Run Selector ─────────────────────────────────────────────────── -->
+<div class="card mb-4">
+  <div class="card-body" style="display:flex; align-items:center; gap:16px; padding:14px 20px; flex-wrap:wrap;">
+    <span style="font-size:13px; color:#8B95A7; font-weight:600;">📊 Data Source:</span>
+    <select id="analytics-run-selector" class="form-select" style="background:#161B22; border:1px solid rgba(255,255,255,0.1); color:#EEF2FF; font-size:13px; max-width:400px; border-radius:6px;" onchange="loadAnalytics()">
+      <option value="">All Historical Data</option>
+    </select>
+    <button class="btn btn-sm btn-outline-primary" onclick="loadAnalytics()" style="font-size:12px;">🔄 Refresh</button>
+    <div id="analytics-total-badge" style="margin-left:auto; background:rgba(108,99,255,0.12); border:1px solid rgba(108,99,255,0.3); border-radius:20px; padding:4px 12px; font-size:11px; font-weight:700; color:#A78BFA;"></div>
+  </div>
+</div>
+
+<!-- ─── Top KPI Row ──────────────────────────────────────────────────── -->
+<div style="display:grid; grid-template-columns: repeat(4, 1fr); gap:16px; margin-bottom:24px;" id="analytics-kpi-row">
+  <div class="card text-center fade-in-up skeleton-card"><div class="skeleton" style="height:60px; border-radius:6px;"></div></div>
+  <div class="card text-center fade-in-up skeleton-card"><div class="skeleton" style="height:60px; border-radius:6px;"></div></div>
+  <div class="card text-center fade-in-up skeleton-card"><div class="skeleton" style="height:60px; border-radius:6px;"></div></div>
+  <div class="card text-center fade-in-up skeleton-card"><div class="skeleton" style="height:60px; border-radius:6px;"></div></div>
+</div>
+
+<!-- ─── Weekly & Monthly Trends ──────────────────────────────────────── -->
+<div class="analytics-grid-2">
+  <div class="card hover-lift">
+    <div class="card-title">📅 Weekly Alert Volume</div>
+    <div id="chart-weekly" style="min-height:260px;"><div class="spinner"></div></div>
+  </div>
+  <div class="card hover-lift">
+    <div class="card-title">📆 Monthly Aggregation</div>
+    <div id="chart-monthly" style="min-height:260px;"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ─── Distributions Row ─────────────────────────────────────────────── -->
+<div class="analytics-grid-3">
+  <div class="card hover-lift">
+    <div class="card-title">🦠 Disease Distribution</div>
+    <div id="chart-disease" style="min-height:260px;"><div class="spinner"></div></div>
+  </div>
+  <div class="card hover-lift">
+    <div class="card-title">🌍 Country Distribution</div>
+    <div id="chart-country" style="min-height:260px;"><div class="spinner"></div></div>
+  </div>
+  <div class="card hover-lift">
+    <div class="card-title">🚨 Alert Severity Breakdown</div>
+    <div id="chart-alert-dist" style="min-height:260px;"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ─── City Ranking ──────────────────────────────────────────────────── -->
+<div class="analytics-grid-2">
+  <div class="card hover-lift">
+    <div class="card-title">🏙️ City Risk Ranking</div>
+    <div id="chart-city-ranking" style="min-height:300px;"><div class="spinner"></div></div>
+  </div>
+  <div class="card hover-lift">
+    <div class="card-title">📈 Outbreak Growth Rate (Emergency Alerts / Week)</div>
+    <div id="chart-growth" style="min-height:300px;"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ─── Model Confidence Row ──────────────────────────────────────────── -->
+<div class="analytics-grid-2">
+  <div class="card hover-lift">
+    <div class="card-title">⚡ Fusion Score Distribution</div>
+    <div id="chart-fusion-hist" style="min-height:260px;"><div class="spinner"></div></div>
+  </div>
+  <div class="card hover-lift">
+    <div class="card-title">🧠 LSTM Prediction Confidence Distribution</div>
+    <div id="chart-lstm-conf" style="min-height:260px;"><div class="spinner"></div></div>
+  </div>
+</div>
+
+<!-- ─── Export Dialog Trigger ─────────────────────────────────────────── -->
+<div class="text-center mt-3 mb-4">
+  <button class="btn btn-outline-secondary px-5" onclick="showExportDialog()" style="font-size:12px;">
+    📥 Export Analytics Report
+  </button>
+</div>
+
+<!-- ─── Export Dialog Modal ───────────────────────────────────────────── -->
+<div class="modal fade" id="exportModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content" style="background:#0F172A; border:1px solid rgba(255,255,255,0.12); border-radius:12px;">
+      <div class="modal-header" style="border-bottom:1px solid rgba(255,255,255,0.07); padding:16px 20px;">
+        <h5 style="color:#EEF2FF; font-size:15px; font-weight:700; margin:0;">📥 Export Center</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body" style="padding:24px;">
+        <div style="font-size:12px; color:#8B95A7; margin-bottom:16px;">Select export formats. Multiple formats create a ZIP archive.</div>
+        <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px;">
+          <div class="export-option-card selected" onclick="toggleExport(this,'csv')" data-format="csv">
+            <div style="font-size:24px;">📄</div>
+            <div>
+              <div style="font-weight:700; color:#EEF2FF; font-size:13px;">CSV</div>
+              <div style="font-size:10px; color:#8B95A7;">Tabular data</div>
+            </div>
+          </div>
+          <div class="export-option-card" onclick="toggleExport(this,'xlsx')" data-format="xlsx">
+            <div style="font-size:24px;">📊</div>
+            <div>
+              <div style="font-weight:700; color:#EEF2FF; font-size:13px;">Excel</div>
+              <div style="font-size:10px; color:#8B95A7;">With formatting</div>
+            </div>
+          </div>
+          <div class="export-option-card" onclick="toggleExport(this,'pdf')" data-format="pdf">
+            <div style="font-size:24px;">📑</div>
+            <div>
+              <div style="font-weight:700; color:#EEF2FF; font-size:13px;">PDF Report</div>
+              <div style="font-size:10px; color:#8B95A7;">Print-ready</div>
+            </div>
+          </div>
+          <div class="export-option-card" onclick="toggleExport(this,'json')" data-format="json">
+            <div style="font-size:24px;">🔧</div>
+            <div>
+              <div style="font-weight:700; color:#EEF2FF; font-size:13px;">JSON</div>
+              <div style="font-size:10px; color:#8B95A7;">API compatible</div>
+            </div>
+          </div>
+          <div class="export-option-card" onclick="toggleExport(this,'png')" data-format="png">
+            <div style="font-size:24px;">🖼️</div>
+            <div>
+              <div style="font-weight:700; color:#EEF2FF; font-size:13px;">Charts (PNG)</div>
+              <div style="font-size:10px; color:#8B95A7;">All visible charts</div>
+            </div>
+          </div>
+          <div class="export-option-card" onclick="toggleExport(this,'zip')" data-format="zip">
+            <div style="font-size:24px;">📦</div>
+            <div>
+              <div style="font-weight:700; color:#EEF2FF; font-size:13px;">ZIP Package</div>
+              <div style="font-size:10px; color:#8B95A7;">All formats bundled</div>
+            </div>
+          </div>
+        </div>
+        <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.06); border-radius:8px; padding:14px; margin-bottom:16px; font-size:12px;">
+          <label style="color:#8B95A7; font-size:10px; font-weight:700; text-transform:uppercase; display:block; margin-bottom:8px;">Include In Export</label>
+          <div style="display:flex; flex-wrap:wrap; gap:10px;">
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" checked id="exp-incl-filters"> <span style="color:#EEF2FF;">Current Filters</span></label>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" checked id="exp-incl-charts"> <span style="color:#EEF2FF;">Charts</span></label>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" checked id="exp-incl-tables"> <span style="color:#EEF2FF;">Tables</span></label>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" checked id="exp-incl-summary"> <span style="color:#EEF2FF;">Summary</span></label>
+            <label style="display:flex; align-items:center; gap:6px; cursor:pointer;"><input type="checkbox" id="exp-incl-meta"> <span style="color:#EEF2FF;">Metadata</span></label>
+          </div>
+        </div>
+        <div id="export-msg" style="font-size:11px; color:#8B95A7; margin-bottom:12px;">Selected: CSV</div>
+        <button class="btn btn-primary w-100 py-2" onclick="executeExport()" id="export-exec-btn" style="font-weight:700;">
+          ⬇️ Download Export
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.plot.ly/plotly-2.26.0.min.js"></script>
+<script>
+  const PL = {
+    paper_bgcolor: 'transparent', plot_bgcolor: 'transparent',
+    font: { color: '#8B95A7', family: 'Inter, sans-serif', size: 11 },
+    margin: { t: 20, b: 40, l: 40, r: 20 },
+    xaxis: { gridcolor: 'rgba(255,255,255,0.06)', linecolor: 'rgba(255,255,255,0.06)', zerolinecolor: 'rgba(255,255,255,0.06)' },
+    yaxis: { gridcolor: 'rgba(255,255,255,0.06)', linecolor: 'rgba(255,255,255,0.06)', zerolinecolor: 'rgba(255,255,255,0.06)' },
+    showlegend: false
+  };
+  const PC = { responsive: true, displayModeBar: false };
+
+  const ALERT_COLORS = { Emergency: '#EF4444', Warning: '#F59E0B', Watch: '#3B82F6', Normal: '#6B7280' };
+  let selectedFormats = new Set(['csv']);
+  let currentData = null;
+
+  async function loadRunSelector() {
+    try {
+      const r = await fetch('/api/history');
+      const d = await r.json();
+      const runs = d.data || d;
+      
+      const sel = document.getElementById('analytics-run-selector');
+      const savedVal = localStorage.getItem('selectedDataSource');
+      const currentVal = savedVal || sel.value;
+      
+      sel.innerHTML = '<option value="historical">Historical Surveillance (Pre-imported)</option>';
+      
+      if (runs && Array.isArray(runs)) {
+        runs.filter(x => x.status === 'Completed').forEach(run => {
+          const opt = document.createElement('option');
+          opt.value = run.prediction_id;
+          opt.textContent = `Upload Run: ${run.original_filename} (${run.upload_time})`;
+          sel.appendChild(opt);
+        });
+      }
+      
+      if (currentVal) {
+        sel.value = currentVal;
+        if (!sel.value) {
+          sel.value = 'historical';
+          localStorage.setItem('selectedDataSource', 'historical');
+        }
+      }
+    } catch(e) {
+      console.error("Failed to load run selector", e);
+    }
+  }
+
+  async function loadAnalytics() {
+    const sel = document.getElementById('analytics-run-selector');
+    const predId = sel.value;
+    
+    if (predId) {
+      localStorage.setItem('selectedDataSource', predId);
+    }
+
+    let url = '/api/analytics';
+    if (predId && predId !== 'historical') {
+      url += '?prediction_id=' + predId;
+    }
+    const chartIds = ['chart-weekly','chart-monthly','chart-disease','chart-country','chart-alert-dist','chart-city-ranking','chart-growth','chart-fusion-hist','chart-lstm-conf'];
+
+    // Reset charts with spinners
+    chartIds.forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = '<div class="spinner" style="margin:80px auto;"></div>';
+    });
+
+    try {
+      const r = await fetch(url);
+      const d = await r.json();
+      
+      // The interceptor unwraps d.data into d directly. Handle both wrapped and unwrapped:
+      if (d && d.success === false) {
+        throw new Error(d.message || "API returned failure");
+      }
+      currentData = d.data || d || {};
+
+      const total = currentData.total_groups || 0;
+      const ad = currentData.alert_dist || {};
+      const diseases = currentData.disease_dist || [];
+      const countries = currentData.country_dist || [];
+
+      document.getElementById('analytics-kpi-row').innerHTML = `
+        <div class="card text-center fade-in-up">
+          <div style="font-size:30px; font-weight:800; color:#6C63FF; padding:8px 0;">${total.toLocaleString()}</div>
+          <div style="font-size:11px; color:#8B95A7; padding-bottom:10px;">Total Groups Analyzed</div>
+        </div>
+        <div class="card text-center fade-in-up">
+          <div style="font-size:30px; font-weight:800; color:#EF4444; padding:8px 0;">${(ad.Emergency||0).toLocaleString()}</div>
+          <div style="font-size:11px; color:#8B95A7; padding-bottom:10px;">Emergency Alerts</div>
+        </div>
+        <div class="card text-center fade-in-up">
+          <div style="font-size:30px; font-weight:800; color:#10B981; padding:8px 0;">${diseases.length}</div>
+          <div style="font-size:11px; color:#8B95A7; padding-bottom:10px;">Diseases Tracked</div>
+        </div>
+        <div class="card text-center fade-in-up">
+          <div style="font-size:30px; font-weight:800; color:#F59E0B; padding:8px 0;">${countries.length}</div>
+          <div style="font-size:11px; color:#8B95A7; padding-bottom:10px;">Countries Covered</div>
+        </div>
+      `;
+      document.getElementById('analytics-total-badge').textContent = `${total.toLocaleString()} prediction groups`;
+
+      renderAllCharts(currentData);
+    } catch(e) {
+      console.error("Analytics fetch failed:", e);
+      // Explicitly clear spinners on error
+      chartIds.forEach(id => {
+        emptyState(id, "Failed to load data or an error occurred.");
+      });
+    }
+  }
+
+  function renderAllCharts(data) {
+    // Weekly trend (require at least 2 points for a trend line)
+    if (data.weekly_trends && data.weekly_trends.length > 1) {
+      Plotly.newPlot('chart-weekly', [{
+        type: 'scatter', mode: 'lines+markers',
+        x: data.weekly_trends.map(x=>x.week),
+        y: data.weekly_trends.map(x=>x.count),
+        fill: 'tozeroy', fillcolor: 'rgba(108,99,255,0.08)',
+        line: { color: '#6C63FF', width: 2 },
+        marker: { color: '#6C63FF', size: 4 }
+      }], { ...PL }, PC);
+    } else { emptyState('chart-weekly', 'Insufficient historical data for trend analysis.'); }
+
+    // Monthly trend
+    if (data.monthly_trends && data.monthly_trends.length > 0) {
+      Plotly.newPlot('chart-monthly', [{
+        type: 'bar',
+        x: data.monthly_trends.map(x=>x.month),
+        y: data.monthly_trends.map(x=>x.count),
+        marker: { color: '#00D4FF', opacity: 0.8 }
+      }], { ...PL }, PC);
+    } else { emptyState('chart-monthly', 'Insufficient historical data for trend analysis.'); }
+
+    // Disease distribution
+    if (data.disease_dist && data.disease_dist.length > 0) {
+      Plotly.newPlot('chart-disease', [{
+        type: 'pie', hole: 0.45,
+        labels: data.disease_dist.map(x=>x.name),
+        values: data.disease_dist.map(x=>x.count),
+        marker: { colors: ['#6C63FF','#3B82F6','#10B981','#F59E0B','#EF4444','#A78BFA','#00D4FF','#34D399','#FBBF24','#F87171','#60A5FA','#C4B5FD'] },
+        textinfo: 'percent', textfont: { size: 10, color: '#EEF2FF' }
+      }], { ...PL, margin: { t:10, b:10, l:10, r:10 }, showlegend: true, legend: { font: { size: 9, color: '#8B95A7' }, bgcolor: 'transparent', orientation: 'v' } }, PC);
+    } else { emptyState('chart-disease'); }
+
+    // Country distribution
+    if (data.country_dist && data.country_dist.length > 0) {
+      Plotly.newPlot('chart-country', [{
+        type: 'bar', orientation: 'h',
+        y: data.country_dist.map(x=>x.name),
+        x: data.country_dist.map(x=>x.count),
+        marker: { color: '#10B981' }
+      }], { ...PL, yaxis: { ...PL.yaxis, automargin: true } }, PC);
+    } else { emptyState('chart-country'); }
+
+    // Alert severity donut
+    const levels = ['Emergency','Warning','Watch','Normal'];
+    const alertVals = levels.map(l => (data.alert_dist && data.alert_dist[l]) ? data.alert_dist[l] : 0);
+    if (alertVals.some(v => v > 0)) {
+      Plotly.newPlot('chart-alert-dist', [{
+        type: 'pie', hole: 0.55,
+        labels: levels,
+        values: alertVals,
+        marker: { colors: ['#EF4444','#F59E0B','#3B82F6','#6B7280'] },
+        textinfo: 'percent+label', textfont: { size: 10, color: '#EEF2FF' }
+      }], { ...PL, margin: { t:10, b:10, l:10, r:10 } }, PC);
+    } else { emptyState('chart-alert-dist'); }
+
+    // City ranking
+    if (data.city_ranking && data.city_ranking.length > 0) {
+      const top = data.city_ranking.slice(0, 12);
+      const maxCount = Math.max(...top.map(x=>x.count));
+      Plotly.newPlot('chart-city-ranking', [{
+        type: 'bar', orientation: 'h',
+        y: top.map(x=>x.city).reverse(),
+        x: top.map(x=>x.count).reverse(),
+        marker: { color: top.map(x=>x.count).reverse().map(v => `rgba(108,99,255,${0.4 + 0.6*v/maxCount})`) },
+        text: top.map(x=>x.count).reverse().map(String),
+        textposition: 'outside', textfont: { color: '#EEF2FF', size: 10 }
+      }], { ...PL, yaxis: { ...PL.yaxis, automargin: true }, xaxis: { ...PL.xaxis } }, PC);
+    } else { emptyState('chart-city-ranking'); }
+
+    // Outbreak growth rate
+    if (data.outbreak_growth && data.outbreak_growth.length > 1) {
+      Plotly.newPlot('chart-growth', [{
+        type: 'scatter', mode: 'lines+markers',
+        x: data.outbreak_growth.map(x=>x.week),
+        y: data.outbreak_growth.map(x=>x.count),
+        fill: 'tozeroy', fillcolor: 'rgba(239,68,68,0.08)',
+        line: { color: '#EF4444', width: 2 },
+        marker: { color: '#EF4444', size: 5 }
+      }], { ...PL }, PC);
+    } else { emptyState('chart-growth', 'Insufficient historical data for trend analysis.'); }
+
+    // Fusion score histogram
+    if (data.fusion_histogram && data.fusion_histogram.some(x => x.count > 0)) {
+      Plotly.newPlot('chart-fusion-hist', [{
+        type: 'bar',
+        x: data.fusion_histogram.map(x=>`${x.score} pts`),
+        y: data.fusion_histogram.map(x=>x.count),
+        marker: { color: ['#6B7280','#3B82F6','#3B82F6','#F59E0B','#EF4444','#EF4444'] },
+        text: data.fusion_histogram.map(x=>x.count > 0 ? x.count.toLocaleString() : ''),
+        textposition: 'outside', textfont: { color: '#EEF2FF', size: 10 }
+      }], { ...PL }, PC);
+    } else { emptyState('chart-fusion-hist'); }
+
+    // LSTM confidence distribution
+    if (data.lstm_conf_dist && data.lstm_conf_dist.some(x => x.count > 0)) {
+      Plotly.newPlot('chart-lstm-conf', [{
+        type: 'bar',
+        x: data.lstm_conf_dist.map(x=>x.range),
+        y: data.lstm_conf_dist.map(x=>x.count),
+        marker: { color: data.lstm_conf_dist.map((x,i) => i >= 3 ? '#EF4444' : i >= 1 ? '#F59E0B' : '#6B7280'), opacity: 0.85 }
+      }], {
+        ...PL,
+        shapes: [{
+          type: 'line', x0: '20-30%', x1: '20-30%', y0: 0, y1: 1,
+          yref: 'paper', line: { color: '#EF4444', width: 1.5, dash: 'dot' }
+        }]
+      }, PC);
+    } else { emptyState('chart-lstm-conf'); }
+  }
+
+  function emptyState(id, customMsg) {
+    const el = document.getElementById(id);
+    const msg = customMsg || 'No data available for this selection.';
+    if (el) el.innerHTML = `<div class="empty-state"><div class="empty-state-icon">📭</div><div class="empty-state-sub">${msg}</div></div>`;
+  }
+
+  // ─── Export Dialog ────────────────────────────────────────────────────
+  function showExportDialog() {
+    new bootstrap.Modal(document.getElementById('exportModal')).show();
+  }
+
+  function toggleExport(card, format) {
+    card.classList.toggle('selected');
+    if (selectedFormats.has(format)) selectedFormats.delete(format);
+    else selectedFormats.add(format);
+    document.getElementById('export-msg').textContent = `Selected: ${[...selectedFormats].join(', ').toUpperCase() || 'None'}`;
+  }
+
+  async function executeExport() {
+    const btn = document.getElementById('export-exec-btn');
+    if (selectedFormats.size === 0) { showToast('Export', 'Select at least one format.', 'Warning'); return; }
+    const predId = document.getElementById('analytics-run-selector').value;
+
+    // Handle PNG separately (client-side)
+    if (selectedFormats.has('png')) {
+      const charts = ['chart-weekly','chart-monthly','chart-disease','chart-country','chart-alert-dist','chart-city-ranking','chart-growth','chart-fusion-hist','chart-lstm-conf'];
+      for (const id of charts) {
+        const el = document.getElementById(id);
+        if (el && el.querySelector('.main-svg')) {
+          Plotly.downloadImage(el, { format: 'png', filename: id, width: 1200, height: 500 });
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+      showToast('Export', 'Chart images downloaded.', 'Success');
+    }
+
+    const formats = [...selectedFormats].filter(f => f !== 'png');
+    if (formats.length > 0 && predId) {
+      for (const fmt of formats) {
+        if (['csv','xlsx','pdf','json'].includes(fmt)) {
+          window.open(`/api/download/${predId}/${fmt}`, '_blank');
+          await new Promise(r => setTimeout(r, 400));
+        }
+      }
+      showToast('Export', 'Downloads started.', 'Success');
+    } else if (formats.length > 0) {
+      showToast('Export', 'Select a specific run to export tabular data.', 'Warning');
+    }
+    bootstrap.Modal.getInstance(document.getElementById('exportModal'))?.hide();
+  }
+
+  document.addEventListener('DOMContentLoaded', async () => {
+    await loadRunSelector();
+    await loadAnalytics();
+  });
+</script>
+{% endblock %}
