@@ -209,7 +209,7 @@ Deployment is configured through `Procfile` and `nixpacks.toml`.
 | Name | Field |
 |---|---|
 | Mostafa Tamer (Team Lead) | Intelligent Systems, Faculty of AI, Menoufia University |
-| Yahia Sanad | Intelligent Systems, Faculty of AI, Menoufia University |
+| Yahya Sanad | Intelligent Systems, Faculty of AI, Menoufia University |
 | Ahd Sayed | Data Science, Faculty of AI, Menoufia University |
 | Hanaa Hemdan | Data Science, Faculty of AI, Menoufia University |
 | Mohamed Atia | Mechatronics, Faculty of Engineering, Zagazig National University |
